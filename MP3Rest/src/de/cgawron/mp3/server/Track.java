@@ -25,6 +25,7 @@ public class Track
 
 	public static final String TRACKID = "TRACKID"; //$NON-NLS-1$
 	public static final String ALBUMID = "ALBUMID"; //$NON-NLS-1$
+	public static final String TRACKNO = "TRACKNO"; //$NON-NLS-1$
 	public static final String TITLE = "TITLE"; //$NON-NLS-1$
 	public static final String PATH = "PATH"; //$NON-NLS-1$
 
@@ -33,9 +34,10 @@ public class Track
 	static Persister pers = new Persister();
 
 	Path path;
-	String title;
+	private String title;
 	String albumTitle;
 	int trackId;
+	int trackNo;
 	long modified;
 
 	private Album album;
@@ -51,14 +53,10 @@ public class Track
 			con = Crawler.getConnection();
 			try {
 				queryTrackByPath = con
-						.prepareStatement(	"SELECT TRACKID, ALBUMID, TITLE, PATH, MODIFIED FROM TRACK WHERE PATH=? FOR UPDATE",
-											ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-											ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				.prepareStatement("SELECT TRACKID, ALBUMID, TRACKNO, TITLE, PATH, MODIFIED FROM TRACK WHERE PATH=? FOR UPDATE",
+									ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
 				queryTrackByPath.setCursorName("TRACK_BY_PATH");
-				queryTrackById = con
-						.prepareStatement(	"SELECT TRACKID, ALBUMID, TITLE, PATH, MODIFIED FROM TRACK WHERE TRACKID=?",
-											ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-											ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryTrackById = con.prepareStatement("SELECT TRACKID, ALBUMID, TRACKNO, TITLE, PATH, MODIFIED FROM TRACK WHERE TRACKID=?");
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
 			}
@@ -71,6 +69,7 @@ public class Track
 				trackSet.moveToInsertRow();
 				trackSet.updateInt(TRACKID, track.trackId);
 				trackSet.updateInt(ALBUMID, track.album.albumId);
+				trackSet.updateInt(TRACKNO, track.trackNo);
 				trackSet.updateString(TITLE, track.title);
 				trackSet.updateString(PATH, track.path.toString());
 				trackSet.updateTimestamp(MODIFIED, new Timestamp(track.modified));
@@ -101,7 +100,8 @@ public class Track
 		AudioFile f = AudioFileIO.read(path.toFile());
 		Tag tag = f.getTag();
 		albumTitle = tag.getFirst(FieldKey.ALBUM);
-		title = tag.getFirst(FieldKey.TITLE);
+		trackNo = Integer.parseInt(tag.getFirst(FieldKey.TRACK));
+		setTitle(tag.getFirst(FieldKey.TITLE));
 		for (FieldKey key : keys) {
 			List<TagField> fields = tag.getFields(key);
 			for (TagField field : fields) {
@@ -116,7 +116,7 @@ public class Track
 	{
 		this.path = FileSystems.getDefault().getPath(trackSet.getString(PATH));
 		this.trackId = trackSet.getInt(TRACKID);
-		this.title = trackSet.getString(TITLE);
+		this.setTitle(trackSet.getString(TITLE));
 	}
 
 	public void persist() throws SQLException {
@@ -131,5 +131,13 @@ public class Track
 		if (pers == null)
 			pers = new Persister();
 		return pers.getById(id);
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
 	}
 }

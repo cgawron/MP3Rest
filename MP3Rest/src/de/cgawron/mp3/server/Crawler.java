@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -28,7 +29,7 @@ public class Crawler
 
 	private static Path root = FileSystems.getDefault().getPath("/opt/mp3");
 	// private static String jdbcUrl = "jdbc:db2:Music";
-	private static String jdbcUrl = "jdbc:derby:WEB-INF/music";
+	private static String jdbcUrl = "jdbc:derby:/home/cgawron/musicDB";
 
 	private static Connection con;
 
@@ -94,11 +95,16 @@ public class Crawler
 				Context envCtx = (Context) initCtx.lookup("java:comp/env");
 				DataSource ds = (DataSource) envCtx.lookup("jdbc/musicDB");
 				con = ds.getConnection();
-				// con = DriverManager.getConnection(jdbcUrl);
 				con.setAutoCommit(false);
-			} catch (Exception e) {
-				logger.log(Level.SEVERE, "error opening JDBC connection", e);
-				throw new RuntimeException(e);
+			} catch (Exception e1) {
+				logger.log(Level.WARNING, "error opening JDBC connection via JNDI", e1);
+				try {
+					con = DriverManager.getConnection(jdbcUrl);
+					con.setAutoCommit(false);
+				} catch (Exception e2) {
+					logger.log(Level.SEVERE, "error opening JDBC connection via URL", e2);
+					throw new RuntimeException(e2);
+				}
 			}
 		}
 		return con;

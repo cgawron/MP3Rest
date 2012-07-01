@@ -56,6 +56,9 @@ public class AlbumResource
 			writer.append("<h1>Album " + album.title + "</h1>");
 			try {
 				List<Track> tracks = album.getTracks();
+				for (Track track : tracks) {
+					writer.append("<p>" + track.getTitle() + "</p>");
+				}
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
 			}

@@ -36,19 +36,18 @@ public class Album
 		{
 			con = Crawler.getConnection();
 			try {
-				queryAlbumByTitle = con
-						.prepareStatement(	"SELECT ALBUMID, TITLE FROM ALBUM WHERE TITLE=? FOR UPDATE",
-											ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-											ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAlbumById = con.prepareStatement(	"SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=? FOR UPDATE",
+				queryAlbumByTitle = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE TITLE=? FOR UPDATE",
+															ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
+															ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryAlbumById = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=? FOR UPDATE",
 														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
 														ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAllAlbum = con.prepareStatement(	"SELECT ALBUMID, TITLE FROM ALBUM ",
-														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-														ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAlbumTracks = con.prepareStatement("SELECT TRACKID FROM TRACK WHERE ALBUMID=? ",
-														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-														ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryAllAlbum = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM ", ResultSet.TYPE_SCROLL_SENSITIVE,
+														ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryAlbumTracks = con.prepareStatement("SELECT TRACKID FROM TRACK JOIN ALBUM ON TRACK.ALBUMID=ALBUM.ALBUMID "
+														+ "      WHERE ALBUM.ALBUMID=? ORDER BY TRACKNO",
+														ResultSet.TYPE_SCROLL_SENSITIVE,
+														ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
 				queryAlbumByTitle.setCursorName("ALBUM");
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
