@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -18,6 +17,10 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.sql.DataSource;
 
 public class Crawler
 {
@@ -87,9 +90,13 @@ public class Crawler
 	public static Connection getConnection() {
 		if (con == null) {
 			try {
-				con = DriverManager.getConnection(jdbcUrl);
+				Context initCtx = new InitialContext();
+				Context envCtx = (Context) initCtx.lookup("java:comp/env");
+				DataSource ds = (DataSource) envCtx.lookup("jdbc/musicDB");
+				con = ds.getConnection();
+				// con = DriverManager.getConnection(jdbcUrl);
 				con.setAutoCommit(false);
-			} catch (SQLException e) {
+			} catch (Exception e) {
 				logger.log(Level.SEVERE, "error opening JDBC connection", e);
 				throw new RuntimeException(e);
 			}

@@ -20,6 +20,7 @@ import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
 import de.cgawron.mp3.server.Album;
+import de.cgawron.mp3.server.Track;
 
 @Path("/album")
 public class AlbumResource
@@ -50,7 +51,16 @@ public class AlbumResource
 				WebApplicationException {
 			logger.info("class: " + clazz.getName() + ", type: " + type.toString());
 			OutputStreamWriter writer = new OutputStreamWriter(entityStream);
-			writer.append("Album: ");
+			writer.append("<?xml version='1.0' encoding='UTF-8'?>");
+			writer.append("<html>");
+			writer.append("<h1>Album " + album.title + "</h1>");
+			try {
+				List<Track> tracks = album.getTracks();
+			} catch (SQLException e) {
+				throw new RuntimeException(e);
+			}
+			writer.append("</html>");
+			writer.close();
 		}
 
 	}
@@ -79,17 +89,17 @@ public class AlbumResource
 				throws IOException, WebApplicationException {
 			logger.info("class: " + clazz.getName() + ", type: " + type.toString());
 			OutputStreamWriter writer = new OutputStreamWriter(entityStream);
+			writer.append("<?xml version='1.0' encoding='UTF-8'?>");
 			writer.append("<html>");
 			writer.append("<h1>Albums</h1>");
 			writer.append("<ul>");
 			for (Album album : albums) {
-				writer.append("<li>" + album.title + "</li>");
+				writer.append(String.format("<li><a href=\"album/%d\">%s</a></li>", album.albumId, album.title));
 			}
 			writer.append("</ul>");
 			writer.append("</html>");
 			writer.close();
 		}
-
 	}
 
 	// This method is called if XMLis request
@@ -105,9 +115,9 @@ public class AlbumResource
 	@GET
 	@Path("{id}")
 	@Produces({ MediaType.TEXT_HTML })
-	public Album getHTML(@PathParam("id") String id) {
+	public Album getHTML(@PathParam("id") String id) throws NumberFormatException, SQLException {
 		logger.info("id=" + id);
-		return new Album();
+		return Album.getById(id);
 	}
 
 	// This can be used to test the integration with the browser

@@ -2,6 +2,7 @@ package de.cgawron.mp3.server;
 
 import static de.cgawron.mp3.server.Track.ALBUMID;
 import static de.cgawron.mp3.server.Track.TITLE;
+import static de.cgawron.mp3.server.Track.TRACKID;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -21,33 +22,42 @@ public class Album
 	static Persister pers = null; // new Persister();
 
 	public String title;
-	int albumId;
+	public int albumId;
 
 	static class Persister
 	{
 		static Connection con;
-		static PreparedStatement queryAlbum;
+		static PreparedStatement queryAlbumByTitle;
+		static PreparedStatement queryAlbumById;
+		static PreparedStatement queryAlbumTracks;
 		static PreparedStatement queryAllAlbum;
 
 		Persister()
 		{
 			con = Crawler.getConnection();
 			try {
-				queryAlbum = con.prepareStatement(	"SELECT ALBUMID, TITLE FROM ALBUM WHERE TITLE=? FOR UPDATE",
-													ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-													ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryAlbumByTitle = con
+						.prepareStatement(	"SELECT ALBUMID, TITLE FROM ALBUM WHERE TITLE=? FOR UPDATE",
+											ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
+											ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryAlbumById = con.prepareStatement(	"SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=? FOR UPDATE",
+														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
+														ResultSet.HOLD_CURSORS_OVER_COMMIT);
 				queryAllAlbum = con.prepareStatement(	"SELECT ALBUMID, TITLE FROM ALBUM ",
 														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
 														ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAlbum.setCursorName("ALBUM");
+				queryAlbumTracks = con.prepareStatement("SELECT TRACKID FROM TRACK WHERE ALBUMID=? ",
+														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
+														ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryAlbumByTitle.setCursorName("ALBUM");
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
 			}
 		}
 
 		void persist(Album album) throws SQLException {
-			queryAlbum.setString(1, album.title);
-			ResultSet albumSet = queryAlbum.executeQuery();
+			queryAlbumByTitle.setString(1, album.title);
+			ResultSet albumSet = queryAlbumByTitle.executeQuery();
 			if (!albumSet.next()) {
 				albumSet.moveToInsertRow();
 				albumSet.updateInt(ALBUMID, album.albumId);
@@ -63,6 +73,26 @@ public class Album
 				albums.add(new Album(albumSet.getString(TITLE)));
 			}
 			return albums;
+		}
+
+		List<Track> getTracks(Album album) throws SQLException {
+			List<Track> tracks = new ArrayList<Track>();
+			queryAlbumTracks.setInt(1, album.albumId);
+			ResultSet trackSet = queryAlbumTracks.executeQuery();
+			while (trackSet.next()) {
+				tracks.add(Track.getById(trackSet.getInt(TRACKID)));
+			}
+			return tracks;
+		}
+
+		Album getById(int id) throws SQLException {
+			Album album = null;
+			queryAlbumById.setInt(1, id);
+			ResultSet albumSet = queryAlbumById.executeQuery();
+			if (albumSet.next()) {
+				album = new Album(albumSet.getString(TITLE));
+			}
+			return album;
 		}
 	}
 
@@ -92,6 +122,18 @@ public class Album
 		if (pers == null)
 			pers = new Persister();
 		return Album.pers.getAll();
+	}
+
+	public static Album getById(String id) throws NumberFormatException, SQLException {
+		if (pers == null)
+			pers = new Persister();
+		return Album.pers.getById(Integer.parseInt(id));
+	}
+
+	public List<Track> getTracks() throws SQLException {
+		if (pers == null)
+			pers = new Persister();
+		return Album.pers.getTracks(this);
 	}
 
 }
