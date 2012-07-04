@@ -42,7 +42,7 @@ public class Album
 				queryAlbumById = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=? FOR UPDATE",
 														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
 														ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAllAlbum = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM ", ResultSet.TYPE_SCROLL_SENSITIVE,
+				queryAllAlbum = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM ORDER BY TITLE", ResultSet.TYPE_SCROLL_SENSITIVE,
 														ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
 				queryAlbumTracks = con
 				.prepareStatement("SELECT TRACK.TRACKID, TRACK.TRACKNO FROM TRACK JOIN ALBUM ON TRACK.ALBUMID=ALBUM.ALBUMID "
