@@ -2,6 +2,7 @@ package de.cgawron.mp3.server;
 
 import static de.cgawron.mp3.server.Updater.MODIFIED;
 
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,8 +16,12 @@ import java.util.logging.Logger;
 
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
+import org.jaudiotagger.audio.exceptions.CannotReadException;
+import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException;
+import org.jaudiotagger.audio.exceptions.ReadOnlyFileException;
 import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.Tag;
+import org.jaudiotagger.tag.TagException;
 import org.jaudiotagger.tag.TagField;
 
 public class Track
@@ -116,7 +121,28 @@ public class Track
 	{
 		this.path = FileSystems.getDefault().getPath(trackSet.getString(PATH));
 		this.trackId = trackSet.getInt(TRACKID);
+		this.trackNo = trackSet.getInt(TRACKNO);
 		this.setTitle(trackSet.getString(TITLE));
+	}
+
+	public Path getPath() {
+		return path;
+	}
+
+	public String getAlbumTitle() {
+		return albumTitle;
+	}
+
+	public int getTrackId() {
+		return trackId;
+	}
+
+	public int getTrackNo() {
+		return trackNo;
+	}
+
+	public long getModified() {
+		return modified;
 	}
 
 	public void persist() throws SQLException {
@@ -133,11 +159,23 @@ public class Track
 		return pers.getById(id);
 	}
 
+	public static Track getById(String id) throws SQLException {
+		if (pers == null)
+			pers = new Persister();
+		return pers.getById(Integer.parseInt(id));
+	}
+
 	public String getTitle() {
 		return title;
 	}
 
 	public void setTitle(String title) {
 		this.title = title;
+	}
+
+	public Tag getTag() throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException {
+		AudioFile f = AudioFileIO.read(path.toFile());
+		Tag tag = f.getTag();
+		return tag;
 	}
 }

@@ -44,10 +44,9 @@ public class Album
 														ResultSet.HOLD_CURSORS_OVER_COMMIT);
 				queryAllAlbum = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM ", ResultSet.TYPE_SCROLL_SENSITIVE,
 														ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAlbumTracks = con.prepareStatement("SELECT TRACKID FROM TRACK JOIN ALBUM ON TRACK.ALBUMID=ALBUM.ALBUMID "
-														+ "      WHERE ALBUM.ALBUMID=? ORDER BY TRACKNO",
-														ResultSet.TYPE_SCROLL_SENSITIVE,
-														ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
+				queryAlbumTracks = con
+				.prepareStatement("SELECT TRACK.TRACKID, TRACK.TRACKNO FROM TRACK JOIN ALBUM ON TRACK.ALBUMID=ALBUM.ALBUMID "
+									+ "      WHERE ALBUM.ALBUMID=? ORDER BY TRACK.TRACKNO");
 				queryAlbumByTitle.setCursorName("ALBUM");
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
@@ -71,6 +70,7 @@ public class Album
 			while (albumSet.next()) {
 				albums.add(new Album(albumSet.getString(TITLE)));
 			}
+			albumSet.close();
 			return albums;
 		}
 
@@ -81,6 +81,7 @@ public class Album
 			while (trackSet.next()) {
 				tracks.add(Track.getById(trackSet.getInt(TRACKID)));
 			}
+			trackSet.close();
 			return tracks;
 		}
 
@@ -91,6 +92,7 @@ public class Album
 			if (albumSet.next()) {
 				album = new Album(albumSet.getString(TITLE));
 			}
+			albumSet.close();
 			return album;
 		}
 	}

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.sql.SQLException;
 import java.util.List;
@@ -48,7 +49,7 @@ public class AlbumResource
 		@Override
 		public void writeTo(Album album, Class<?> clazz, Type type, Annotation[] annotations, MediaType mediatype,
 							MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException,
-				WebApplicationException {
+		WebApplicationException {
 			logger.info("class: " + clazz.getName() + ", type: " + type.toString());
 			OutputStreamWriter writer = new OutputStreamWriter(entityStream);
 			writer.append("<?xml version='1.0' encoding='UTF-8'?>");
@@ -57,7 +58,8 @@ public class AlbumResource
 			try {
 				List<Track> tracks = album.getTracks();
 				for (Track track : tracks) {
-					writer.append("<p>" + track.getTitle() + "</p>");
+					writer.append(String.format("<p><a href='../track/%d/content'>%2d %s</a></p>",
+												track.getTrackId(), track.getTrackNo(), track.getTitle()));
 				}
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
@@ -82,14 +84,14 @@ public class AlbumResource
 		@Override
 		public boolean isWriteable(Class<?> clazz, Type type, Annotation[] annotations, MediaType mediatype) {
 			logger.info("class: " + clazz.getName() + ", type: " + type.toString());
-			// TODO Auto-generated method stub
-			return true;
+			ParameterizedType gt = (ParameterizedType) type;
+			return gt.getActualTypeArguments()[0].equals(Album.class);
 		}
 
 		@Override
 		public void writeTo(List<Album> albums, Class<?> clazz, Type type, Annotation[] annotations,
 							MediaType mediatype, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream)
-				throws IOException, WebApplicationException {
+		throws IOException, WebApplicationException {
 			logger.info("class: " + clazz.getName() + ", type: " + type.toString());
 			OutputStreamWriter writer = new OutputStreamWriter(entityStream);
 			writer.append("<?xml version='1.0' encoding='UTF-8'?>");
