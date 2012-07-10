@@ -29,7 +29,7 @@ public class Crawler
 
    private static Path root = FileSystems.getDefault().getPath("/opt/mp3");
    // private static String jdbcUrl = "jdbc:db2:Music";
-   private static String jdbcUrl = "jdbc:derby:/home/cgawron/musicDB;create=true";
+   private static String jdbcUrl = "jdbc:postgresql://localhost:5433/postgres?user=music&password=mUsIc";
 
    private static Connection con;
 
@@ -93,7 +93,7 @@ public class Crawler
 		 try {
 			Context initCtx = new InitialContext();
 			Context envCtx = (Context) initCtx.lookup("java:comp/env");
-			DataSource ds = (DataSource) envCtx.lookup("jdbc/musicDB");
+			DataSource ds = (DataSource) envCtx.lookup("musicDB");
 			con = ds.getConnection();
 			con.setAutoCommit(false);
 		 } catch (Exception e1) {

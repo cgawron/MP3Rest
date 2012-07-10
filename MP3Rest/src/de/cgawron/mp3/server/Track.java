@@ -2,6 +2,7 @@ package de.cgawron.mp3.server;
 
 import static de.cgawron.mp3.server.Updater.MODIFIED;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -12,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -41,18 +43,26 @@ public class Track
 	                                            FieldKey.ARTISTS,
 	                                            FieldKey.ALBUM_ARTIST,
 	                                            FieldKey.ACOUSTID_ID,
+	                                            FieldKey.COMPOSER,
+	                                            FieldKey.CONDUCTOR,
 	                                            FieldKey.GENRE,
 	                                            FieldKey.TITLE,
 	                                            FieldKey.TRACK };
 
    static Persister pers = new Persister();
 
-   Path path;
+   private Path path;
+
    private String title;
+
    String albumTitle;
+
    int trackId;
+
    int trackNo;
+
    long modified;
+
    Map<FieldKey, String> tags = new HashMap<FieldKey, String>();
 
    private Album album;
@@ -96,6 +106,7 @@ public class Track
 		 }
 
 		 for (FieldKey key : track.tags.keySet()) {
+			logger.fine(String.format("storing tag %s=%s for %d", key.name(), track.tags.get(key), track.trackId));
 			updateTags.setInt(1, track.trackId);
 			updateTags.setString(2, key.name());
 			ResultSet tagSet = updateTags.executeQuery();
@@ -162,8 +173,12 @@ public class Track
 	  this.setTitle(trackSet.getString(TITLE));
    }
 
-   public Path getPath() {
+   Path getPath() {
 	  return path;
+   }
+
+   public File getFile() {
+	  return path.toFile();
    }
 
    public String getAlbumTitle() {
@@ -210,9 +225,13 @@ public class Track
 	  this.title = title;
    }
 
-   public Tag getTag() throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException {
+   Tag getTag() throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException {
 	  AudioFile f = AudioFileIO.read(path.toFile());
 	  Tag tag = f.getTag();
 	  return tag;
+   }
+
+   public List<TagField> getFields(FieldKey key) throws Exception {
+	  return getTag().getFields(key);
    }
 }

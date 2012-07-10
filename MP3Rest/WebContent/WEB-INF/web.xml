@@ -14,17 +14,18 @@
 	</welcome-file-list>
 
 
-
+<!--  
 	<servlet>
-		<servlet-name>Jersey Web Application</servlet-name>
+		<servlet-name>javax.ws.rs.core.Application</servlet-name>
 		<servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
 		<init-param>
 			<param-name>com.sun.jersey.config.property.packages</param-name>
 			<param-value>de.cgawron.mp3.rest</param-value>
 		</init-param>
 	</servlet>
+-->
 	<servlet-mapping>
-		<servlet-name>Jersey Web Application</servlet-name>
+		<servlet-name>javax.ws.rs.core.Application</servlet-name>
 		<url-pattern>/mp3/*</url-pattern>
 	</servlet-mapping>
 
@@ -33,15 +34,9 @@
   	  <description>
  	    Music database
  	  </description>
- 	  <res-ref-name>
-  	    jdbc/musicDB
- 	  </res-ref-name>
-      <res-type>
-        javax.sql.DataSource
-      </res-type>
-      <res-auth>
-        Container
-      </res-auth>
+ 	  <res-ref-name>musicDB</res-ref-name>
+      <res-type>javax.sql.DataSource</res-type>
+      <res-auth>Container</res-auth>
     </resource-ref>
 
 </web-app>

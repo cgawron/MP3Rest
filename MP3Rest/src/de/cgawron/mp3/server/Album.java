@@ -13,128 +13,130 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 
 @XmlRootElement
 public class Album
 {
-	private static Logger logger = Logger.getLogger(Album.class.toString());
+   private static Logger logger = Logger.getLogger(Album.class.toString());
 
-	static Persister pers = null; // new Persister();
+   static Persister pers = null; // new Persister();
 
-	public String title;
-	public int albumId;
+   public String title;
+   public int albumId;
 
-	static class Persister
-	{
-		static Connection con;
-		static PreparedStatement queryAlbumByTitle;
-		static PreparedStatement queryAlbumById;
-		static PreparedStatement queryAlbumTracks;
-		static PreparedStatement queryAllAlbum;
+   static class Persister
+   {
+	  static Connection con;
+	  static PreparedStatement queryAlbumByTitle;
+	  static PreparedStatement queryAlbumById;
+	  static PreparedStatement queryAlbumTracks;
+	  static PreparedStatement queryAllAlbum;
 
-		Persister()
-		{
-			con = Crawler.getConnection();
-			try {
-				queryAlbumByTitle = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE TITLE=? FOR UPDATE",
-															ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-															ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAlbumById = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=? FOR UPDATE",
-														ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
-														ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAllAlbum = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM ORDER BY TITLE", ResultSet.TYPE_SCROLL_SENSITIVE,
-														ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
-				queryAlbumTracks = con
-				.prepareStatement("SELECT TRACK.TRACKID, TRACK.TRACKNO FROM TRACK JOIN ALBUM ON TRACK.ALBUMID=ALBUM.ALBUMID "
-									+ "      WHERE ALBUM.ALBUMID=? ORDER BY TRACK.TRACKNO");
-				queryAlbumByTitle.setCursorName("ALBUM");
-			} catch (SQLException e) {
-				throw new RuntimeException(e);
-			}
-		}
+	  Persister()
+	  {
+		 con = Crawler.getConnection();
+		 try {
+			queryAlbumByTitle = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE TITLE=? FOR UPDATE",
+			                                         ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
+			                                         ResultSet.HOLD_CURSORS_OVER_COMMIT);
+			queryAlbumById = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=? FOR UPDATE",
+			                                      ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
+			                                      ResultSet.HOLD_CURSORS_OVER_COMMIT);
+			queryAllAlbum = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM ORDER BY TITLE", ResultSet.TYPE_SCROLL_SENSITIVE,
+			                                     ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
+			queryAlbumTracks = con
+			.prepareStatement("SELECT TRACK.TRACKID, TRACK.TRACKNO FROM TRACK JOIN ALBUM ON TRACK.ALBUMID=ALBUM.ALBUMID "
+			                  + "      WHERE ALBUM.ALBUMID=? ORDER BY TRACK.TRACKNO");
+			queryAlbumByTitle.setCursorName("ALBUM");
+		 } catch (SQLException e) {
+			throw new RuntimeException(e);
+		 }
+	  }
 
-		void persist(Album album) throws SQLException {
-			queryAlbumByTitle.setString(1, album.title);
-			ResultSet albumSet = queryAlbumByTitle.executeQuery();
-			if (!albumSet.next()) {
-				albumSet.moveToInsertRow();
-				albumSet.updateInt(ALBUMID, album.albumId);
-				albumSet.updateString(TITLE, album.title);
-				albumSet.insertRow();
-			}
-		}
+	  void persist(Album album) throws SQLException {
+		 queryAlbumByTitle.setString(1, album.title);
+		 ResultSet albumSet = queryAlbumByTitle.executeQuery();
+		 if (!albumSet.next()) {
+			albumSet.moveToInsertRow();
+			albumSet.updateInt(ALBUMID, album.albumId);
+			albumSet.updateString(TITLE, album.title);
+			albumSet.insertRow();
+		 }
+	  }
 
-		List<Album> getAll() throws SQLException {
-			List<Album> albums = new ArrayList<Album>();
-			ResultSet albumSet = queryAllAlbum.executeQuery();
-			while (albumSet.next()) {
-				albums.add(new Album(albumSet.getString(TITLE)));
-			}
-			albumSet.close();
-			return albums;
-		}
+	  List<Album> getAll(List<String> clauses, List<String> args) throws SQLException {
+		 List<Album> albums = new ArrayList<Album>();
+		 ResultSet albumSet = queryAllAlbum.executeQuery();
+		 while (albumSet.next()) {
+			albums.add(new Album(albumSet.getString(TITLE)));
+		 }
+		 albumSet.close();
+		 return albums;
+	  }
 
-		List<Track> getTracks(Album album) throws SQLException {
-			List<Track> tracks = new ArrayList<Track>();
-			queryAlbumTracks.setInt(1, album.albumId);
-			ResultSet trackSet = queryAlbumTracks.executeQuery();
-			while (trackSet.next()) {
-				tracks.add(Track.getById(trackSet.getInt(TRACKID)));
-			}
-			trackSet.close();
-			return tracks;
-		}
+	  List<Integer> getTracks(Album album) throws SQLException {
+		 List<Integer> tracks = new ArrayList<Integer>();
+		 queryAlbumTracks.setInt(1, album.albumId);
+		 ResultSet trackSet = queryAlbumTracks.executeQuery();
+		 while (trackSet.next()) {
+			tracks.add(trackSet.getInt(TRACKID));
+		 }
+		 trackSet.close();
+		 return tracks;
+	  }
 
-		Album getById(int id) throws SQLException {
-			Album album = null;
-			queryAlbumById.setInt(1, id);
-			ResultSet albumSet = queryAlbumById.executeQuery();
-			if (albumSet.next()) {
-				album = new Album(albumSet.getString(TITLE));
-			}
-			albumSet.close();
-			return album;
-		}
-	}
+	  Album getById(int id) throws SQLException {
+		 Album album = null;
+		 queryAlbumById.setInt(1, id);
+		 ResultSet albumSet = queryAlbumById.executeQuery();
+		 if (albumSet.next()) {
+			album = new Album(albumSet.getString(TITLE));
+		 }
+		 albumSet.close();
+		 return album;
+	  }
+   }
 
-	public Album()
-	{
-	}
+   public Album()
+   {
+   }
 
-	public Album(String title)
-	{
-		this.title = title;
-		this.albumId = title.hashCode();
-	}
+   public Album(String title)
+   {
+	  this.title = title;
+	  this.albumId = title.hashCode();
+   }
 
-	public Album(Track track)
-	{
-		this.title = track.albumTitle;
-		this.albumId = title.hashCode();
-	}
+   public Album(Track track)
+   {
+	  this.title = track.albumTitle;
+	  this.albumId = title.hashCode();
+   }
 
-	public void persist() throws SQLException {
-		if (pers == null)
-			pers = new Persister();
-		pers.persist(this);
-	}
+   public void persist() throws SQLException {
+	  if (pers == null)
+		 pers = new Persister();
+	  pers.persist(this);
+   }
 
-	public static List<Album> getAll() throws SQLException {
-		if (pers == null)
-			pers = new Persister();
-		return Album.pers.getAll();
-	}
+   public static List<Album> getAll(List<String> clauses, List<String> args) throws SQLException {
+	  if (pers == null)
+		 pers = new Persister();
+	  return Album.pers.getAll(clauses, args);
+   }
 
-	public static Album getById(String id) throws NumberFormatException, SQLException {
-		if (pers == null)
-			pers = new Persister();
-		return Album.pers.getById(Integer.parseInt(id));
-	}
+   public static Album getById(String id) throws NumberFormatException, SQLException {
+	  if (pers == null)
+		 pers = new Persister();
+	  return Album.pers.getById(Integer.parseInt(id));
+   }
 
-	public List<Track> getTracks() throws SQLException {
-		if (pers == null)
-			pers = new Persister();
-		return Album.pers.getTracks(this);
-	}
+   @XmlTransient
+   public List<Integer> getTracks() throws SQLException {
+	  if (pers == null)
+		 pers = new Persister();
+	  return Album.pers.getTracks(this);
+   }
 
 }

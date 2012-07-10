@@ -23,7 +23,6 @@ import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
 import org.jaudiotagger.tag.FieldKey;
-import org.jaudiotagger.tag.Tag;
 import org.jaudiotagger.tag.TagField;
 import org.jaudiotagger.tag.TagTextField;
 
@@ -60,10 +59,11 @@ public class TrackResource
 		 writer.append("<html>");
 		 writer.append("<h1>Track " + track.getTitle() + "</h1>");
 		 try {
-			Tag tag = track.getTag();
-			writer.append(String.format("%d (%d) tags</br>", tag.getFieldCount(), tag.getFieldCountIncludingSubValues()));
+			// Tag tag = track.getTag();
+			// writer.append(String.format("%d (%d) tags</br>",
+			// tag.getFieldCount(), tag.getFieldCountIncludingSubValues()));
 			for (FieldKey key : Track.FIELD_KEYS) {
-			   List<TagField> fields = tag.getFields(key);
+			   List<TagField> fields = track.getFields(key);
 			   for (TagField field : fields) {
 				  if (field instanceof TagTextField) {
 					 TagTextField text = (TagTextField) field;
@@ -105,7 +105,7 @@ public class TrackResource
    public Response getFile(@PathParam("id") String id) throws SQLException {
 	  Track track = Track.getById(id);
 
-	  File f = track.getPath().toFile();
+	  File f = track.getFile();
 
 	  ResponseBuilder response = Response.ok((Object) f);
 	  response.type("audio/mpeg");
