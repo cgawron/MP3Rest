@@ -159,9 +159,9 @@ public class AlbumResource
    @GET
    @Path("{id}")
    @Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
-   public Album getXML(@PathParam("id") String id) {
+   public Album getXML(@PathParam("id") String id) throws NumberFormatException, SQLException {
 	  logger.info("id=" + id);
-	  return new Album();
+	  return Album.getById(id);
    }
 
    @GET
