@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.net.URI;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.logging.Logger;
@@ -15,10 +16,12 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
@@ -26,12 +29,31 @@ import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.TagField;
 import org.jaudiotagger.tag.TagTextField;
 
-import de.cgawron.mp3.server.Track;
-
 @Path("/track")
 public class TrackResource
 {
    private static Logger logger = Logger.getLogger(TrackResource.class.toString());
+
+   @Context
+   UriInfo uriInfo;
+
+   private class Track extends de.cgawron.mp3.server.Track
+   {
+	  public URI self;
+
+	  Track(de.cgawron.mp3.server.Track track)
+	  {
+		 super(track);
+		 self = uriInfo.getBaseUri().resolve("track/" + getTrackId());
+		 logger.info("Track: self=" + self);
+	  }
+   }
+
+   public Track getById(String id) throws SQLException
+   {
+	  de.cgawron.mp3.server.Track track = de.cgawron.mp3.server.Track.getById(id);
+	  return new Track(track);
+   }
 
    @Provider
    @Produces({ MediaType.TEXT_HTML })
@@ -88,7 +110,7 @@ public class TrackResource
    @Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
    public Track getXML(@PathParam("id") String id) throws SQLException {
 	  logger.info("id=" + id);
-	  return Track.getById(id);
+	  return getById(id);
    }
 
    // This can be used to test the integration with the browser
@@ -97,13 +119,13 @@ public class TrackResource
    @Produces({ MediaType.TEXT_HTML })
    public Track getHTML(@PathParam("id") String id) throws NumberFormatException, SQLException {
 	  logger.info("id=" + id);
-	  return Track.getById(id);
+	  return getById(id);
    }
 
    @GET
    @Path("{id}/content")
    public Response getFile(@PathParam("id") String id) throws SQLException {
-	  Track track = Track.getById(id);
+	  Track track = getById(id);
 
 	  File f = track.getFile();
 

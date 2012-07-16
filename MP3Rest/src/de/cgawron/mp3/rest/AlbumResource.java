@@ -6,6 +6,8 @@ import java.io.OutputStreamWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,14 +19,15 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
-import de.cgawron.mp3.server.Album;
 import de.cgawron.mp3.server.Track;
 
 @Path("/album")
@@ -32,6 +35,30 @@ public class AlbumResource
 {
    private static final String APPLICATION_XSPF_XML = "application/xspf+xml";
    private static Logger logger = Logger.getLogger(AlbumResource.class.toString());
+
+   @Context
+   UriInfo uriInfo;
+
+   class Album extends de.cgawron.mp3.server.Album
+   {
+	  public URI self;
+
+	  Album(de.cgawron.mp3.server.Album album)
+	  {
+		 super(album);
+		 self = uriInfo.getBaseUri().resolve("album/" + albumId);
+		 logger.info("Album: self=" + self);
+	  }
+
+	  public List<URI> getTracks() throws SQLException, MalformedURLException {
+		 List<Integer> ids = getTrackIDs();
+		 List<URI> uris = new ArrayList<URI>();
+		 for (int id : ids) {
+			uris.add(self.resolve("../track/" + id));
+		 }
+		 return uris;
+	  }
+   }
 
    @Provider
    @Produces({ MediaType.TEXT_HTML })
@@ -59,11 +86,12 @@ public class AlbumResource
 		 writer.append("<html>");
 		 writer.append("<h1>Album " + album.title + "</h1>");
 		 try {
-			List<Integer> trackIDs = album.getTracks();
-			for (int id : trackIDs) {
+			List<Integer> tracks = album.getTrackIDs();
+			for (int id : tracks) {
 			   Track track = Track.getById(id);
-			   writer.append(String.format("<p><a href='../track/%d'>%2d %s</a></p>",
-				                           track.getTrackId(), track.getTrackNo(), track.getTitle()));
+			   URI self = album.self.resolve("../track/" + id);
+			   writer.append(String.format("<p><a href='%s'>%2d %s</a></p>",
+				                           self, track.getTrackNo(), track.getTitle()));
 			}
 		 } catch (SQLException e) {
 			throw new RuntimeException(e);
@@ -141,11 +169,12 @@ public class AlbumResource
 		 writer.append("<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n");
 		 writer.append("<trackList>");
 		 try {
-			List<Integer> trackIDs = album.getTracks();
+			List<Integer> trackIDs = album.getTrackIDs();
 			for (int id : trackIDs) {
-			   Track track = Track.getById(id);
+			   Track track = de.cgawron.mp3.server.Track.getById(id);
+			   URI self = album.self.resolve("../track/" + id);
 			   writer.append(String.format("<track><title>%s</title><location>%s/track/%d/content</location></track>",
-				                           track.getTitle(), "http://192.168.10.2:8080/MP3Rest/mp3", track.getTrackId()));
+				                           track.getTitle(), self));
 			}
 		 } catch (SQLException e) {
 			throw new RuntimeException(e);
@@ -159,25 +188,28 @@ public class AlbumResource
    @GET
    @Path("{id}")
    @Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
-   public Album getXML(@PathParam("id") String id) throws NumberFormatException, SQLException {
-	  logger.info("id=" + id);
-	  return Album.getById(id);
+   public Album getXML(@PathParam("id") String id) throws NumberFormatException, SQLException,
+   MalformedURLException {
+	  logger.info("id=" + id + ", uriInfo: " + uriInfo.getBaseUri());
+	  return getById(id);
    }
 
    @GET
    @Path("{id}")
    @Produces({ MediaType.TEXT_HTML })
-   public Album getHTML(@PathParam("id") String id) throws NumberFormatException, SQLException {
-	  logger.info("id=" + id);
-	  return Album.getById(id);
+   public Album getHTML(@PathParam("id") String id) throws NumberFormatException, SQLException,
+   MalformedURLException {
+	  logger.info("id=" + id + ", uriInfo: " + uriInfo);
+	  return getById(id);
    }
 
    @GET
    @Path("{id}/xspf")
    @Produces({ APPLICATION_XSPF_XML })
-   public Response getXSPF(@PathParam("id") String id) throws NumberFormatException, SQLException {
-	  logger.info("xspf for id=" + id);
-	  Album album = Album.getById(id);
+   public Response getXSPF(@PathParam("id") String id) throws NumberFormatException, SQLException,
+   MalformedURLException {
+	  logger.info("xspf for id=" + id + ", uriInfo: " + uriInfo);
+	  Album album = getById(id);
 
 	  ResponseBuilder response = Response.ok(album, APPLICATION_XSPF_XML);
 	  response.header("Content-Disposition", String.format("attachment; filename=\"%d.xspf\"", album.albumId));
@@ -187,11 +219,26 @@ public class AlbumResource
    // This can be used to test the integration with the browser
    @GET
    @Produces({ MediaType.TEXT_HTML, MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
-   public List<Album> listAlbums(@QueryParam("conductor") String conductor) throws SQLException {
+   public List<Album> listAlbums(@QueryParam("conductor") String conductor) throws SQLException,
+   MalformedURLException {
 	  logger.info("conductor: " + conductor);
 	  List<String> clauses = new ArrayList<String>();
 	  List<String> args = new ArrayList<String>();
-	  List<Album> albums = Album.getAll(clauses, args);
+	  List<Album> albums = getAll(clauses, args);
+	  return albums;
+   }
+
+   private Album getById(String id) throws NumberFormatException, MalformedURLException, SQLException {
+	  de.cgawron.mp3.server.Album album = de.cgawron.mp3.server.Album.getById(id);
+	  return new Album(album);
+   }
+
+   private List<Album> getAll(List<String> clauses, List<String> args) throws MalformedURLException, SQLException {
+	  List<de.cgawron.mp3.server.Album> rawAlbums = de.cgawron.mp3.server.Album.getAll(clauses, args);
+	  List<Album> albums = new ArrayList<Album>();
+	  for (de.cgawron.mp3.server.Album album : rawAlbums) {
+		 albums.add(new Album(album));
+	  }
 	  return albums;
    }
 

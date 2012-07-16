@@ -5,6 +5,33 @@
 <link type="text/css" href="mp3.css" rel="stylesheet">
 <script src="prototype.js" type="text/javascript"></script>
 <script>
+    function getTrackRow(url) {
+       	var row = new Element('tr');
+    	new Ajax.Request(url, {
+			method : 'get',
+			requestHeaders : ['Accept', 'application/json'],
+			evalJS : false,
+			evalJSON : false,
+			onSuccess : function(transport) {
+				try {
+					var track = transport.responseText.evalJSON();				 
+			    	row.appendChild(new Element('td').update(track.trackNo));			    
+			    	row.appendChild(new Element('td').appendChild(new Element('a', { href : track.self }).update(track.title)));
+				} catch (e) {
+					alert("caught: " + e.message);
+				}
+			},
+			onFailure : function(transport) {
+				alert("onFailure");
+			},
+			onException : function(request, exception) {
+				alert("onException");
+			}
+		});
+
+    	return row;
+    }
+
 	function showAlbum(id)
 	{
 		// alert("showAlbum " + id);
@@ -16,7 +43,12 @@
 			onSuccess : function(transport) {
 				try {
 					var album = transport.responseText.evalJSON();
-					$('album').update(album.title);
+					$('albumTitle').update(album.title);
+					$('trackList').update("<tbody></tbody>");
+					for (i=0; i<album.tracks.length; i++) {
+						var row = getTrackRow(album.tracks[i]);
+						$('trackList').appendChild(row);
+					}
 				} catch (e) {
 					alert("caught: " + e.message);
 				}
@@ -64,20 +96,25 @@
 <title>MP3 Albums</title>
 </head>
 <body onload="init()">
-	<h1>MP3 Albums</h1>
 	<div>
-	<div id="list">
-		<table>
-			<thead>
-				<tr>
-					<th>Title</th>
-				</tr>
-			</thead>
-			<tbody id="albums"></tbody>
-		</table>
+		<div id="list">
+		    <h1>MP3 Albums</h1>
+			<table>
+				<thead>
+					<tr>
+						<th>Title</th>
+					</tr>
+				</thead>
+				<tbody id="albums"></tbody>
+			</table>
+		</div>
+		<div id="album">
+			<h1 id="albumTitle"></h1>
+			<table>
+			<thead><tr><th>Track</th><th>Title</th><th>Duration</th></tr></thead>
+			<tbody id="trackList"></tbody>
+			</table>
+		</div>
 	</div>
-	<div id="album">
-	</div>
-</div>
 </body>
 </html>

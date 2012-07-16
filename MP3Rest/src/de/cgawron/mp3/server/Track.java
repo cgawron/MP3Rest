@@ -4,6 +4,7 @@ import static de.cgawron.mp3.server.Updater.MODIFIED;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -81,7 +82,7 @@ public class Track
 			queryTrackByPath = con
 			.prepareStatement("SELECT TRACKID, ALBUMID, TRACKNO, TITLE, PATH, MODIFIED FROM TRACK WHERE PATH=? FOR UPDATE",
 			                  ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
-			queryTrackByPath.setCursorName("TRACK_BY_PATH");
+			// queryTrackByPath.setCursorName("TRACK_BY_PATH");
 			queryTrackById = con.prepareStatement("SELECT TRACKID, ALBUMID, TRACKNO, TITLE, PATH, MODIFIED FROM TRACK WHERE TRACKID=?");
 			updateTags = con.prepareStatement("SELECT TRACKID, TAG, TEXT FROM TAGS WHERE TRACKID=? AND TAG=? FOR UPDATE",
 			                                  ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
@@ -134,6 +135,19 @@ public class Track
 		 if (trackSet.next()) {
 			track = new Track(trackSet);
 		 }
+		 trackSet.close();
+		 return track;
+	  }
+
+	  Track getByURL(URL url) throws SQLException {
+		 int id = Integer.parseInt(url.getPath());
+		 Track track = null;
+		 queryTrackById.setInt(1, id);
+		 ResultSet trackSet = queryTrackById.executeQuery();
+		 if (trackSet.next()) {
+			track = new Track(trackSet);
+		 }
+		 trackSet.close();
 		 return track;
 	  }
    }
@@ -173,6 +187,14 @@ public class Track
 	  this.setTitle(trackSet.getString(TITLE));
    }
 
+   public Track(Track track)
+   {
+	  this.path = track.path;
+	  this.trackId = track.trackId;
+	  this.trackNo = track.trackNo;
+	  this.title = track.title;
+   }
+
    Path getPath() {
 	  return path;
    }
@@ -209,6 +231,12 @@ public class Track
 	  if (pers == null)
 		 pers = new Persister();
 	  return pers.getById(id);
+   }
+
+   public static Track getByURL(URL id) throws SQLException {
+	  if (pers == null)
+		 pers = new Persister();
+	  return pers.getByURL(id);
    }
 
    public static Track getById(String id) throws SQLException {

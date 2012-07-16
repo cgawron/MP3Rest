@@ -4,6 +4,7 @@ import static de.cgawron.mp3.server.Track.ALBUMID;
 import static de.cgawron.mp3.server.Track.TITLE;
 import static de.cgawron.mp3.server.Track.TRACKID;
 
+import java.net.MalformedURLException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -30,11 +31,13 @@ public class Album
 	  static Connection con;
 	  static PreparedStatement queryAlbumByTitle;
 	  static PreparedStatement queryAlbumById;
+	  static PreparedStatement queryAlbumByIdRO;
 	  static PreparedStatement queryAlbumTracks;
 	  static PreparedStatement queryAllAlbum;
 
 	  Persister()
 	  {
+		 logger.info("persister created");
 		 con = Crawler.getConnection();
 		 try {
 			queryAlbumByTitle = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE TITLE=? FOR UPDATE",
@@ -43,6 +46,7 @@ public class Album
 			queryAlbumById = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=? FOR UPDATE",
 			                                      ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE,
 			                                      ResultSet.HOLD_CURSORS_OVER_COMMIT);
+			queryAlbumByIdRO = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM WHERE ALBUMID=?");
 			queryAllAlbum = con.prepareStatement("SELECT ALBUMID, TITLE FROM ALBUM ORDER BY TITLE", ResultSet.TYPE_SCROLL_SENSITIVE,
 			                                     ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
 			queryAlbumTracks = con
@@ -63,9 +67,10 @@ public class Album
 			albumSet.updateString(TITLE, album.title);
 			albumSet.insertRow();
 		 }
+		 albumSet.close();
 	  }
 
-	  List<Album> getAll(List<String> clauses, List<String> args) throws SQLException {
+	  List<Album> getAll(List<String> clauses, List<String> args) throws SQLException, MalformedURLException {
 		 List<Album> albums = new ArrayList<Album>();
 		 ResultSet albumSet = queryAllAlbum.executeQuery();
 		 while (albumSet.next()) {
@@ -75,21 +80,22 @@ public class Album
 		 return albums;
 	  }
 
-	  List<Integer> getTracks(Album album) throws SQLException {
-		 List<Integer> tracks = new ArrayList<Integer>();
+	  List<Integer> getTrackIDs(Album album) throws SQLException, MalformedURLException {
+		 List<Integer> trackIDs = new ArrayList<Integer>();
 		 queryAlbumTracks.setInt(1, album.albumId);
 		 ResultSet trackSet = queryAlbumTracks.executeQuery();
 		 while (trackSet.next()) {
-			tracks.add(trackSet.getInt(TRACKID));
+			int id = trackSet.getInt(TRACKID);
+			trackIDs.add(id);
 		 }
 		 trackSet.close();
-		 return tracks;
+		 return trackIDs;
 	  }
 
-	  Album getById(int id) throws SQLException {
+	  Album getById(int id) throws SQLException, MalformedURLException {
 		 Album album = null;
-		 queryAlbumById.setInt(1, id);
-		 ResultSet albumSet = queryAlbumById.executeQuery();
+		 queryAlbumByIdRO.setInt(1, id);
+		 ResultSet albumSet = queryAlbumByIdRO.executeQuery();
 		 if (albumSet.next()) {
 			album = new Album(albumSet.getString(TITLE));
 		 }
@@ -98,8 +104,10 @@ public class Album
 	  }
    }
 
-   public Album()
+   public Album(Album album)
    {
+	  this.title = album.title;
+	  this.albumId = album.albumId;
    }
 
    public Album(String title)
@@ -120,23 +128,24 @@ public class Album
 	  pers.persist(this);
    }
 
-   public static List<Album> getAll(List<String> clauses, List<String> args) throws SQLException {
+   public static List<Album> getAll(List<String> clauses, List<String> args) throws SQLException,
+   MalformedURLException {
 	  if (pers == null)
 		 pers = new Persister();
 	  return Album.pers.getAll(clauses, args);
    }
 
-   public static Album getById(String id) throws NumberFormatException, SQLException {
+   public static Album getById(String id) throws NumberFormatException, SQLException, MalformedURLException {
 	  if (pers == null)
 		 pers = new Persister();
 	  return Album.pers.getById(Integer.parseInt(id));
    }
 
    @XmlTransient
-   public List<Integer> getTracks() throws SQLException {
+   public List<Integer> getTrackIDs() throws SQLException, MalformedURLException {
 	  if (pers == null)
 		 pers = new Persister();
-	  return Album.pers.getTracks(this);
+	  return Album.pers.getTrackIDs(this);
    }
 
 }
