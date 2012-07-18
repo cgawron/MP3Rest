@@ -11,6 +11,7 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 import javax.ws.rs.GET;
@@ -51,9 +52,9 @@ public class AlbumResource
 	  }
 
 	  public List<URI> getTracks() throws SQLException, MalformedURLException {
-		 List<Integer> ids = getTrackIDs();
+		 List<UUID> ids = getTrackIDs();
 		 List<URI> uris = new ArrayList<URI>();
-		 for (int id : ids) {
+		 for (UUID id : ids) {
 			uris.add(self.resolve("../track/" + id));
 		 }
 		 return uris;
@@ -86,8 +87,8 @@ public class AlbumResource
 		 writer.append("<html>");
 		 writer.append("<h1>Album " + album.title + "</h1>");
 		 try {
-			List<Integer> tracks = album.getTrackIDs();
-			for (int id : tracks) {
+			List<UUID> tracks = album.getTrackIDs();
+			for (UUID id : tracks) {
 			   Track track = Track.getById(id);
 			   URI self = album.self.resolve("../track/" + id);
 			   writer.append(String.format("<p><a href='%s'>%2d %s</a></p>",
@@ -169,8 +170,8 @@ public class AlbumResource
 		 writer.append("<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n");
 		 writer.append("<trackList>");
 		 try {
-			List<Integer> trackIDs = album.getTrackIDs();
-			for (int id : trackIDs) {
+			List<UUID> trackIDs = album.getTrackIDs();
+			for (UUID id : trackIDs) {
 			   Track track = de.cgawron.mp3.server.Track.getById(id);
 			   URI self = album.self.resolve("../track/" + id);
 			   writer.append(String.format("<track><title>%s</title><location>%s/track/%d/content</location></track>",

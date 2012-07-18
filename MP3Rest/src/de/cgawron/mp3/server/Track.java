@@ -5,9 +5,15 @@ import static de.cgawron.mp3.server.Updater.MODIFIED;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,6 +22,7 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 import org.jaudiotagger.audio.AudioFile;
@@ -58,7 +65,7 @@ public class Track
 
    String albumTitle;
 
-   int trackId;
+   UUID trackId;
 
    int trackNo;
 
@@ -97,8 +104,8 @@ public class Track
 		 ResultSet trackSet = queryTrackByPath.executeQuery();
 		 if (!trackSet.next()) {
 			trackSet.moveToInsertRow();
-			trackSet.updateInt(TRACKID, track.trackId);
-			trackSet.updateInt(ALBUMID, track.album.albumId);
+			trackSet.updateObject(TRACKID, track.trackId);
+			trackSet.updateObject(ALBUMID, track.album.albumId);
 			trackSet.updateInt(TRACKNO, track.trackNo);
 			trackSet.updateString(TITLE, track.title);
 			trackSet.updateString(PATH, track.path.toString());
@@ -107,13 +114,13 @@ public class Track
 		 }
 
 		 for (FieldKey key : track.tags.keySet()) {
-			logger.fine(String.format("storing tag %s=%s for %d", key.name(), track.tags.get(key), track.trackId));
-			updateTags.setInt(1, track.trackId);
+			logger.fine(String.format("storing tag %s=%s for %s", key.name(), track.tags.get(key), track.trackId.toString()));
+			updateTags.setObject(1, track.trackId);
 			updateTags.setString(2, key.name());
 			ResultSet tagSet = updateTags.executeQuery();
 			if (!tagSet.next()) {
 			   tagSet.moveToInsertRow();
-			   tagSet.updateInt(1, track.trackId);
+			   tagSet.updateObject(1, track.trackId);
 			   tagSet.updateString(2, key.name());
 			   tagSet.updateString(3, track.tags.get(key));
 			   tagSet.insertRow();
@@ -128,9 +135,9 @@ public class Track
 
 	  }
 
-	  Track getById(int id) throws SQLException {
+	  Track getById(UUID uuid) throws SQLException {
 		 Track track = null;
-		 queryTrackById.setInt(1, id);
+		 queryTrackById.setObject(1, uuid);
 		 ResultSet trackSet = queryTrackById.executeQuery();
 		 if (trackSet.next()) {
 			track = new Track(trackSet);
@@ -156,8 +163,7 @@ public class Track
    {
 	  this.path = path;
 
-	  // TODO: Use MD5?
-	  trackId = path.hashCode();
+	  trackId = uuidForPath(path);
 
 	  modified = Files.getLastModifiedTime(path).toMillis();
 
@@ -182,7 +188,7 @@ public class Track
    public Track(ResultSet trackSet) throws SQLException
    {
 	  this.path = FileSystems.getDefault().getPath(trackSet.getString(PATH));
-	  this.trackId = trackSet.getInt(TRACKID);
+	  this.trackId = (UUID) trackSet.getObject(TRACKID);
 	  this.trackNo = trackSet.getInt(TRACKNO);
 	  this.setTitle(trackSet.getString(TITLE));
    }
@@ -207,7 +213,7 @@ public class Track
 	  return albumTitle;
    }
 
-   public int getTrackId() {
+   public UUID getTrackId() {
 	  return trackId;
    }
 
@@ -227,12 +233,6 @@ public class Track
 	  return album;
    }
 
-   public static Track getById(int id) throws SQLException {
-	  if (pers == null)
-		 pers = new Persister();
-	  return pers.getById(id);
-   }
-
    public static Track getByURL(URL id) throws SQLException {
 	  if (pers == null)
 		 pers = new Persister();
@@ -242,7 +242,13 @@ public class Track
    public static Track getById(String id) throws SQLException {
 	  if (pers == null)
 		 pers = new Persister();
-	  return pers.getById(Integer.parseInt(id));
+	  return pers.getById(UUID.fromString(id));
+   }
+
+   public static Track getById(UUID id) throws SQLException {
+	  if (pers == null)
+		 pers = new Persister();
+	  return pers.getById(id);
    }
 
    public String getTitle() {
@@ -262,4 +268,72 @@ public class Track
    public List<TagField> getFields(FieldKey key) throws Exception {
 	  return getTag().getFields(key);
    }
+
+   public static UUID uuidForPath(Path path) throws IOException
+   {
+	  byte[] hash;
+	  FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
+	  MappedByteBuffer buffer = fc.map(MapMode.READ_ONLY, 0, Files.size(path));
+
+	  try {
+		 MessageDigest md = MessageDigest.getInstance("MD5"); //$NON-NLS-1$
+		 md.update(buffer);
+		 hash = md.digest();
+	  } catch (NoSuchAlgorithmException e) {
+		 throw new AssertionError(e);
+	  }
+
+	  long msb = (hash[0] & 0xFFL) << 56;
+	  msb |= (hash[1] & 0xFFL) << 48;
+	  msb |= (hash[2] & 0xFFL) << 40;
+	  msb |= (hash[3] & 0xFFL) << 32;
+	  msb |= (hash[4] & 0xFFL) << 24;
+	  msb |= (hash[5] & 0xFFL) << 16;
+	  msb |= (hash[6] & 0x0FL) << 8;
+	  msb |= (0x3L << 12); // set the version to 3
+	  msb |= (hash[7] & 0xFFL);
+
+	  long lsb = (hash[8] & 0x3FL) << 56;
+	  lsb |= (0x2L << 62); // set the variant to bits 01
+	  lsb |= (hash[9] & 0xFFL) << 48;
+	  lsb |= (hash[10] & 0xFFL) << 40;
+	  lsb |= (hash[11] & 0xFFL) << 32;
+	  lsb |= (hash[12] & 0xFFL) << 24;
+	  lsb |= (hash[13] & 0xFFL) << 16;
+	  lsb |= (hash[14] & 0xFFL) << 8;
+	  lsb |= (hash[15] & 0xFFL);
+	  return new UUID(msb, lsb);
+   }
+
+   /*
+    * public static UUID bytesToUUID(byte[] bytes) { long msb = (bytes[0] &
+    * 0xFFL) << 56; msb |= (bytes[1] & 0xFFL) << 48; msb |= (bytes[2] & 0xFFL)
+    * << 40; msb |= (bytes[3] & 0xFFL) << 32; msb |= (bytes[4] & 0xFFL) << 24;
+    * msb |= (bytes[5] & 0xFFL) << 16; msb |= (bytes[6] & 0xFFL) << 8; msb |=
+    * (bytes[7] & 0xFFL);
+    * 
+    * long lsb = (bytes[8] & 0xFFL) << 56; lsb |= (bytes[9] & 0xFFL) << 48; lsb
+    * |= (bytes[10] & 0xFFL) << 40; lsb |= (bytes[11] & 0xFFL) << 32; lsb |=
+    * (bytes[12] & 0xFFL) << 24; lsb |= (bytes[13] & 0xFFL) << 16; lsb |=
+    * (bytes[14] & 0xFFL) << 8; lsb |= (bytes[15] & 0xFFL); return new UUID(msb,
+    * lsb); }
+    * 
+    * public static byte[] uuidToBytes(UUID uuid) { long msb =
+    * uuid.getMostSignificantBits(); long lsb = uuid.getLeastSignificantBits();
+    * byte[] bytes = new byte[16];
+    * 
+    * bytes[0] = (byte) ((msb >> 56) & 0xff); bytes[1] = (byte) ((msb >> 48) &
+    * 0xff); bytes[2] = (byte) ((msb >> 40) & 0xff); bytes[3] = (byte) ((msb >>
+    * 32) & 0xff); bytes[4] = (byte) ((msb >> 24) & 0xff); bytes[5] = (byte)
+    * ((msb >> 16) & 0xff); bytes[6] = (byte) ((msb >> 8) & 0xff); bytes[7] =
+    * (byte) ((msb) & 0xff);
+    * 
+    * bytes[8] = (byte) ((lsb >> 56) & 0xff); bytes[9] = (byte) ((lsb >> 48) &
+    * 0xff); bytes[10] = (byte) ((lsb >> 40) & 0xff); bytes[11] = (byte) ((lsb
+    * >> 32) & 0xff); bytes[12] = (byte) ((lsb >> 24) & 0xff); bytes[13] =
+    * (byte) ((lsb >> 16) & 0xff); bytes[14] = (byte) ((lsb >> 8) & 0xff);
+    * bytes[15] = (byte) ((lsb) & 0xff);
+    * 
+    * return bytes; }
+    */
 }

@@ -1,15 +1,22 @@
 package de.cgawron.mp3.rest;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.UriInfo;
 
 import org.teleal.cling.DefaultUpnpServiceConfiguration;
@@ -57,7 +64,7 @@ public class UPnPResource implements RegistryListener, Runnable
    UriInfo uriInfo;
 
    private static UpnpService upnpService;
-   private static Collection<Renderer> renderer = new ArrayList<Renderer>();
+   private static Map<String, Renderer> rendererMap = new HashMap<String, Renderer>();
 
    public UPnPResource()
    {
@@ -85,12 +92,36 @@ public class UPnPResource implements RegistryListener, Runnable
 	  }
    }
 
-   // This method is called if XMLis request
    @GET
    @Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
    public Collection<Renderer> getRenderer() {
-	  logger.info("devices: " + renderer);
-	  return renderer;
+	  logger.info("devices: " + rendererMap);
+	  return rendererMap.values();
+   }
+
+   @GET
+   @Path("{id}")
+   @Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
+   public Renderer getRenderer(@PathParam("id") String id) {
+	  logger.info("devices: " + rendererMap);
+	  return rendererMap.get(id);
+   }
+
+   @POST
+   @Path("{id}/play")
+   @Consumes({ "application/x-www-form-urlencoded" })
+   @Produces({ MediaType.TEXT_PLAIN })
+   public Response play(@PathParam("id") String id, @FormParam("uri") String uri) {
+	  Renderer renderer = rendererMap.get(id);
+	  try {
+		 renderer.setAVTransportURI(uri);
+		 ResponseBuilder response = Response.ok("OK");
+		 return response.build();
+	  } catch (Exception ex) {
+		 ResponseBuilder response = Response.serverError().entity(ex);
+		 return response.build();
+	  }
+
    }
 
    @Override
@@ -110,7 +141,7 @@ public class UPnPResource implements RegistryListener, Runnable
 	  logger.info("Remote device available: " + device.getDisplayString());
 	  logger.info("Device type: " + device.getType());
 	  if (device.getType().equals(DeviceType.valueOf("urn:schemas-upnp-org:device:MediaRenderer:1"))) {
-		 renderer.add(new Renderer(upnpService, device));
+		 rendererMap.put(device.getIdentity().getUdn().getIdentifierString(), new Renderer(upnpService, device));
 	  }
    }
 
