@@ -11,6 +11,7 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 import javax.ws.rs.GET;
@@ -51,9 +52,9 @@ public class AlbumResource
 	  }
 
 	  public List<URI> getTracks() throws SQLException, MalformedURLException {
-		 List<Integer> ids = getTrackIDs();
+		 List<UUID> ids = getTrackIDs();
 		 List<URI> uris = new ArrayList<URI>();
-		 for (int id : ids) {
+		 for (UUID id : ids) {
 			uris.add(self.resolve("../track/" + id));
 		 }
 		 return uris;
@@ -86,8 +87,8 @@ public class AlbumResource
 		 writer.append("<html>");
 		 writer.append("<h1>Album " + album.title + "</h1>");
 		 try {
-			List<Integer> tracks = album.getTrackIDs();
-			for (int id : tracks) {
+			List<UUID> tracks = album.getTrackIDs();
+			for (UUID id : tracks) {
 			   Track track = Track.getById(id);
 			   URI self = album.self.resolve("../track/" + id);
 			   writer.append(String.format("<p><a href='%s'>%2d %s</a></p>",
@@ -135,8 +136,8 @@ public class AlbumResource
 		 writer.append("<h1>Albums</h1>");
 		 writer.append("<table>");
 		 for (Album album : albums) {
-			writer.append(String.format("<tr><td><a href=\"album/%d\">%s</a></td>", album.albumId, album.title));
-			writer.append(String.format("<td><a href=\"album/%d/xspf\">xspf</a></td></tr>", album.albumId));
+			writer.append(String.format("<tr><td><a href=\"album/%s\">%s</a></td>", album.albumId, album.title));
+			writer.append(String.format("<td><a href=\"album/%s/xspf\">xspf</a></td></tr>", album.albumId));
 		 }
 		 writer.append("</table>");
 		 writer.append("</html>");
@@ -155,7 +156,7 @@ public class AlbumResource
 
 	  @Override
 	  public boolean isWriteable(Class<?> clazz, Type type, Annotation[] annotations, MediaType mediatype) {
-		 logger.info("class: " + clazz.getName() + ", type: " + type.toString());
+		 logger.info("class: " + clazz + ", type: " + type);
 		 return clazz.equals(Album.class);
 	  }
 
@@ -163,17 +164,17 @@ public class AlbumResource
 	  public void writeTo(Album album, Class<?> clazz, Type type, Annotation[] annotations,
 		                  MediaType mediatype, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream)
 	  throws IOException, WebApplicationException {
-		 logger.info("class: " + clazz.getName() + ", type: " + type.toString());
+		 logger.info("class: " + clazz + ", type: " + type);
 		 OutputStreamWriter writer = new OutputStreamWriter(entityStream);
 		 writer.append("<?xml version='1.0' encoding='UTF-8'?>");
 		 writer.append("<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n");
 		 writer.append("<trackList>");
 		 try {
-			List<Integer> trackIDs = album.getTrackIDs();
-			for (int id : trackIDs) {
+			List<UUID> trackIDs = album.getTrackIDs();
+			for (UUID id : trackIDs) {
 			   Track track = de.cgawron.mp3.server.Track.getById(id);
 			   URI self = album.self.resolve("../track/" + id);
-			   writer.append(String.format("<track><title>%s</title><location>%s/track/%d/content</location></track>",
+			   writer.append(String.format("<track><title>%s</title><location>%s/content</location></track>",
 				                           track.getTitle(), self));
 			}
 		 } catch (SQLException e) {
@@ -212,7 +213,7 @@ public class AlbumResource
 	  Album album = getById(id);
 
 	  ResponseBuilder response = Response.ok(album, APPLICATION_XSPF_XML);
-	  response.header("Content-Disposition", String.format("attachment; filename=\"%d.xspf\"", album.albumId));
+	  response.header("Content-Disposition", String.format("attachment; filename=\"%s.xspf\"", album.albumId));
 	  return response.build();
    }
 

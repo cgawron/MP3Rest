@@ -2,6 +2,7 @@ package de.cgawron.mp3.server;
 
 import java.util.logging.Logger;
 
+import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
@@ -12,7 +13,6 @@ import org.teleal.cling.model.message.UpnpResponse;
 import org.teleal.cling.model.meta.RemoteDevice;
 import org.teleal.cling.model.meta.RemoteService;
 import org.teleal.cling.model.types.ServiceId;
-import org.teleal.cling.model.types.UDN;
 import org.teleal.cling.support.avtransport.callback.SetAVTransportURI;
 
 @XmlRootElement
@@ -49,14 +49,21 @@ public class Renderer
 	  this.avTransport = device.findService(ServiceId.valueOf("urn:upnp-org:serviceId:AVTransport"));
    }
 
-   public UDN getUDN()
+   // For JAXB only
+   public Renderer()
    {
-	  return device.getIdentity().getUdn();
    }
 
+   @XmlAttribute
+   public String getIdentifier()
+   {
+	  return device.getIdentity().getUdn().getIdentifierString();
+   }
+
+   @XmlAttribute
    public String getName()
    {
-	  return device.getDisplayString();
+	  return device.getDetails().getFriendlyName();
    }
 
 }

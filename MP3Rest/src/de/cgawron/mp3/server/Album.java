@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 import javax.xml.bind.annotation.XmlRootElement;
@@ -24,7 +25,7 @@ public class Album
    static Persister pers = null; // new Persister();
 
    public String title;
-   public int albumId;
+   public UUID albumId;
 
    static class Persister
    {
@@ -51,7 +52,7 @@ public class Album
 			                                     ResultSet.CONCUR_UPDATABLE, ResultSet.HOLD_CURSORS_OVER_COMMIT);
 			queryAlbumTracks = con
 			.prepareStatement("SELECT TRACK.TRACKID, TRACK.TRACKNO FROM TRACK JOIN ALBUM ON TRACK.ALBUMID=ALBUM.ALBUMID "
-			                  + "      WHERE ALBUM.ALBUMID=? ORDER BY TRACK.TRACKNO");
+			                  + "      WHERE ALBUM.ALBUMID=UUID(?) ORDER BY TRACK.TRACKNO");
 			queryAlbumByTitle.setCursorName("ALBUM");
 		 } catch (SQLException e) {
 			throw new RuntimeException(e);
@@ -63,7 +64,7 @@ public class Album
 		 ResultSet albumSet = queryAlbumByTitle.executeQuery();
 		 if (!albumSet.next()) {
 			albumSet.moveToInsertRow();
-			albumSet.updateInt(ALBUMID, album.albumId);
+			albumSet.updateObject(ALBUMID, album.albumId);
 			albumSet.updateString(TITLE, album.title);
 			albumSet.insertRow();
 		 }
@@ -80,21 +81,21 @@ public class Album
 		 return albums;
 	  }
 
-	  List<Integer> getTrackIDs(Album album) throws SQLException, MalformedURLException {
-		 List<Integer> trackIDs = new ArrayList<Integer>();
-		 queryAlbumTracks.setInt(1, album.albumId);
+	  List<UUID> getTrackIDs(Album album) throws SQLException, MalformedURLException {
+		 List<UUID> trackIDs = new ArrayList<UUID>();
+		 queryAlbumTracks.setObject(1, album.albumId);
 		 ResultSet trackSet = queryAlbumTracks.executeQuery();
 		 while (trackSet.next()) {
-			int id = trackSet.getInt(TRACKID);
+			UUID id = UUID.fromString(trackSet.getString(TRACKID));
 			trackIDs.add(id);
 		 }
 		 trackSet.close();
 		 return trackIDs;
 	  }
 
-	  Album getById(int id) throws SQLException, MalformedURLException {
+	  Album getById(UUID id) throws SQLException, MalformedURLException {
 		 Album album = null;
-		 queryAlbumByIdRO.setInt(1, id);
+		 queryAlbumByIdRO.setObject(1, id);
 		 ResultSet albumSet = queryAlbumByIdRO.executeQuery();
 		 if (albumSet.next()) {
 			album = new Album(albumSet.getString(TITLE));
@@ -113,13 +114,13 @@ public class Album
    public Album(String title)
    {
 	  this.title = title;
-	  this.albumId = title.hashCode();
+	  this.albumId = UUID.nameUUIDFromBytes(title.getBytes());
    }
 
    public Album(Track track)
    {
 	  this.title = track.albumTitle;
-	  this.albumId = title.hashCode();
+	  this.albumId = UUID.nameUUIDFromBytes(title.getBytes());
    }
 
    public void persist() throws SQLException {
@@ -138,11 +139,11 @@ public class Album
    public static Album getById(String id) throws NumberFormatException, SQLException, MalformedURLException {
 	  if (pers == null)
 		 pers = new Persister();
-	  return Album.pers.getById(Integer.parseInt(id));
+	  return Album.pers.getById(UUID.fromString(id));
    }
 
    @XmlTransient
-   public List<Integer> getTrackIDs() throws SQLException, MalformedURLException {
+   public List<UUID> getTrackIDs() throws SQLException, MalformedURLException {
 	  if (pers == null)
 		 pers = new Persister();
 	  return Album.pers.getTrackIDs(this);

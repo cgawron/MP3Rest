@@ -63,19 +63,19 @@
 	}
 	
 	function init() {
-		new Ajax.Request('mp3/album', {
+		new Ajax.Request('rest/upnp/renderer', {
 			method : 'get',
 			requestHeaders : ['Accept', 'application/json'],
 			evalJS : false,
 			evalJSON : false,
 			onSuccess : function(transport) {
 				try {
-					var albums = transport.responseText.evalJSON();
-					var table = $('albums');
-					for (i = 0; i < albums.length; i++) {
+					var renderers = transport.responseText.evalJSON();
+					var table = $('renderer');
+					for (i = 0; i < renderers.length; i++) {
 						var row = new Element('tr');
 						var tdTitle = document.createElement('td');
-						var link = new Element('a', { href : 'javascript:showAlbum("' + albums[i].albumId +'")' }).update(albums[i].title);
+						var link = new Element('a', { href : 'javascript:showRenderer("' + renderers[i].rendererId +'")' }).update(renderers[i].name);
 						tdTitle.appendChild(link);
 						row.appendChild(tdTitle);
 						table.appendChild(row);			
@@ -98,21 +98,14 @@
 <body onload="init()">
 	<div>
 		<div id="list">
-		    <h1>MP3 Albums</h1>
+		    <h1>UPnP Renderer</h1>
 			<table>
 				<thead>
 					<tr>
-						<th>Title</th>
+						<th>Name</th>
 					</tr>
 				</thead>
-				<tbody id="albums"></tbody>
-			</table>
-		</div>
-		<div id="album">
-			<h1 id="albumTitle"></h1>
-			<table>
-			<thead><tr><th>Track</th><th>Title</th><th>Duration</th></tr></thead>
-			<tbody id="trackList"></tbody>
+				<tbody id="renderer"></tbody>
 			</table>
 		</div>
 	</div>

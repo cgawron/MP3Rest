@@ -70,9 +70,11 @@ public class Updater extends TimerTask implements Runnable
 			else
 			   processFile(path);
 		 } catch (Exception e) {
+			con.rollback();
 			logger.log(Level.SEVERE, "exception in processFile()", e);
 			set.updateInt(STATE, -1);
 			set.updateRow();
+			con.commit();
 			continue;
 		 }
 
