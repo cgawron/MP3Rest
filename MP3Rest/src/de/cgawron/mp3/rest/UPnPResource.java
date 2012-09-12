@@ -1,5 +1,6 @@
 package de.cgawron.mp3.rest;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,12 +37,35 @@ import org.teleal.cling.transport.spi.NetworkAddressFactory;
 import org.teleal.cling.transport.spi.StreamClient;
 import org.teleal.cling.transport.spi.StreamServer;
 
-import de.cgawron.mp3.server.Renderer;
-
 @Path("/upnp/renderer")
 public class UPnPResource implements RegistryListener, Runnable
 {
    private static Logger logger = Logger.getLogger(UPnPResource.class.toString());
+
+   class Renderer extends de.cgawron.mp3.server.Renderer
+   {
+	  public URI self;
+
+	  Renderer(de.cgawron.mp3.server.Renderer renderer)
+	  {
+		 super(renderer);
+		 self = uriInfo.getBaseUri().resolve("upnp/renderer/" + getIdentifier());
+		 logger.info("Renderer: self=" + self);
+	  }
+
+	  public Renderer(UpnpService upnpService, RemoteDevice device)
+	  {
+		 super(upnpService, device);
+		 self = uriInfo.getBaseUri().resolve("upnp/renderer/" + getIdentifier());
+		 logger.info("Renderer: self=" + self);
+	  }
+
+	  public String getState() {
+		 // TODO Auto-generated method stub
+		 return "bla";
+	  }
+
+   }
 
    @SuppressWarnings("rawtypes")
    private class MyUpnpServiceConfiguration extends DefaultUpnpServiceConfiguration
@@ -105,6 +129,14 @@ public class UPnPResource implements RegistryListener, Runnable
    public Renderer getRenderer(@PathParam("id") String id) {
 	  logger.info("devices: " + rendererMap);
 	  return rendererMap.get(id);
+   }
+
+   @GET
+   @Path("{id}/state")
+   @Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
+   public Object getRendererState(@PathParam("id") String id) {
+	  logger.info("getting state of " + id);
+	  return rendererMap.get(id).getState();
    }
 
    @POST

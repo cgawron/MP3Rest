@@ -92,7 +92,7 @@ public class Crawler
 	  if (con == null) {
 		 try {
 			Context initCtx = new InitialContext();
-			Context envCtx = (Context) initCtx.lookup("java:comp/env");
+			Context envCtx = (Context) initCtx.lookup("java:jboss/datasources");
 			DataSource ds = (DataSource) envCtx.lookup("musicDB");
 			con = ds.getConnection();
 			con.setAutoCommit(false);

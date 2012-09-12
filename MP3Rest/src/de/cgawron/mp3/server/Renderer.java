@@ -54,6 +54,13 @@ public class Renderer
    {
    }
 
+   public Renderer(Renderer renderer)
+   {
+	  this.upnpService = renderer.upnpService;
+	  this.device = renderer.device;
+	  this.avTransport = renderer.avTransport;
+   }
+
    @XmlAttribute
    public String getIdentifier()
    {

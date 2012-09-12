@@ -4,98 +4,10 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <link type="text/css" href="mp3.css" rel="stylesheet">
 <script src="prototype.js" type="text/javascript"></script>
-<script>
-    function getTrackRow(url) {
-       	var row = new Element('tr');
-    	new Ajax.Request(url, {
-			method : 'get',
-			requestHeaders : ['Accept', 'application/json'],
-			evalJS : false,
-			evalJSON : false,
-			onSuccess : function(transport) {
-				try {
-					var track = transport.responseText.evalJSON();				 
-			    	row.appendChild(new Element('td').update(track.trackNo));			    
-			    	row.appendChild(new Element('td').appendChild(new Element('a', { href : track.self }).update(track.title)));
-				} catch (e) {
-					alert("caught: " + e.message);
-				}
-			},
-			onFailure : function(transport) {
-				alert("onFailure");
-			},
-			onException : function(request, exception) {
-				alert("onException");
-			}
-		});
-
-    	return row;
-    }
-
-	function showAlbum(id)
-	{
-		// alert("showAlbum " + id);
-		new Ajax.Request('mp3/album/' + id, {
-			method : 'get',
-			requestHeaders : ['Accept', 'application/json'],
-			evalJS : false,
-			evalJSON : false,
-			onSuccess : function(transport) {
-				try {
-					var album = transport.responseText.evalJSON();
-					$('albumTitle').update(album.title);
-					$('trackList').update("<tbody></tbody>");
-					for (i=0; i<album.tracks.length; i++) {
-						var row = getTrackRow(album.tracks[i]);
-						$('trackList').appendChild(row);
-					}
-				} catch (e) {
-					alert("caught: " + e.message);
-				}
-			},
-			onFailure : function(transport) {
-				alert("onFailure");
-			},
-			onException : function(request, exception) {
-				alert("onException");
-			}
-		});
-	}
-	
-	function init() {
-		new Ajax.Request('mp3/album', {
-			method : 'get',
-			requestHeaders : ['Accept', 'application/json'],
-			evalJS : false,
-			evalJSON : false,
-			onSuccess : function(transport) {
-				try {
-					var albums = transport.responseText.evalJSON();
-					var table = $('albums');
-					for (i = 0; i < albums.length; i++) {
-						var row = new Element('tr');
-						var tdTitle = document.createElement('td');
-						var link = new Element('a', { href : 'javascript:showAlbum("' + albums[i].albumId +'")' }).update(albums[i].title);
-						tdTitle.appendChild(link);
-						row.appendChild(tdTitle);
-						table.appendChild(row);			
-					}
-				} catch (e) {
-					alert("caught: " + e.message);
-				}
-			},
-			onFailure : function(transport) {
-				alert("onFailure");
-			},
-			onException : function(request, exception) {
-				alert("onException");
-			}
-		});
-	}
-</script>
+<script src="mp3rest.js" type="text/javascript"></script>
 <title>MP3 Albums</title>
 </head>
-<body onload="init()">
+<body onload="initAlbum()">
 	<div>
 		<div id="list">
 		    <h1>MP3 Albums</h1>
