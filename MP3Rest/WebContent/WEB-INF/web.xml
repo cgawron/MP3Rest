@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="MP3Rest" version="2.5">
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" id="MP3Rest" version="3.0">
   <display-name>MP3Rest</display-name>
   <welcome-file-list>
     <welcome-file>index.html</welcome-file>
@@ -20,6 +20,7 @@
     <res-ref-name>musicDB</res-ref-name>
     <res-type>javax.sql.DataSource</res-type>
     <res-auth>Container</res-auth>
+    <lookup-name>java:jboss/datasources/musicDB</lookup-name>
   </resource-ref>
   <listener>
     <listener-class>de.cgawron.mp3.server.upnp.UPNPServletContextListener</listener-class>
