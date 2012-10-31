@@ -2,7 +2,9 @@ package de.cgawron.mp3.server.upnp.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.DiscriminatorColumn;
 import javax.persistence.ElementCollection;
@@ -10,6 +12,8 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -20,11 +24,15 @@ public abstract class DIDLObject
 
    public static final String ITEM = "object.item";
    public static final String AUDIOITEM = "object.item.audioItem";
+   public static final String MUSICTRACK = "object.item.audioItem.musicTrack";
    public static final String AUDIOBROADCAST = "object.item.audioItem.audioBroadcast";
    public static final String CONTAINER = "object.container";
+   public static final String ALBUM = "object.container.album";
+   public static final String MUSICALBUM = "object.container.album.musicAlbum";
 
    private String id;
-   private String parentID;
+
+   private Container parent;
    private String title;
    private String creator;
    private String clazz;
@@ -44,19 +52,29 @@ public abstract class DIDLObject
 	  setClazz(OBJECT);
    }
 
-   public DIDLObject(String id, String parentId)
+   protected DIDLObject(String id, Container parent)
    {
 	  this.id = id;
-	  this.parentID = parentId;
+	  setParent(parent);
 	  setClazz(OBJECT);
    }
 
-   public String getParentID() {
-	  return parentID;
+   protected DIDLObject(String id, Container parent, String title, String creator)
+   {
+	  setId(id);
+	  setParent(parent);
+	  setTitle(title);
+	  setCreator(creator);
    }
 
-   public void setParentID(String parentID) {
-	  this.parentID = parentID;
+   @ManyToOne(cascade = CascadeType.ALL)
+   @JoinColumn(name = "parentId")
+   public Container getParent() {
+	  return parent;
+   }
+
+   public void setParent(Container parent) {
+	  this.parent = parent;
    }
 
    public String getTitle() {
@@ -99,6 +117,10 @@ public abstract class DIDLObject
 
    public void setId(String id) {
 	  this.id = id;
+   }
+
+   public void setId(UUID id) {
+	  this.id = id.toString();
    }
 
    @ElementCollection

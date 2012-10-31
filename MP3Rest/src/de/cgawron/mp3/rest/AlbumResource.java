@@ -47,7 +47,7 @@ public class AlbumResource
 	  Album(de.cgawron.mp3.server.Album album)
 	  {
 		 super(album);
-		 self = uriInfo.getBaseUri().resolve("album/" + albumId);
+		 self = uriInfo.getBaseUri().resolve("album/" + getAlbumId());
 		 logger.info("Album: self=" + self);
 	  }
 
@@ -85,7 +85,7 @@ public class AlbumResource
 		 OutputStreamWriter writer = new OutputStreamWriter(entityStream);
 		 writer.append("<?xml version='1.0' encoding='UTF-8'?>");
 		 writer.append("<html>");
-		 writer.append("<h1>Album " + album.title + "</h1>");
+		 writer.append("<h1>Album " + album.getTitle() + "</h1>");
 		 try {
 			List<UUID> tracks = album.getTrackIDs();
 			for (UUID id : tracks) {
@@ -136,8 +136,8 @@ public class AlbumResource
 		 writer.append("<h1>Albums</h1>");
 		 writer.append("<table>");
 		 for (Album album : albums) {
-			writer.append(String.format("<tr><td><a href=\"album/%s\">%s</a></td>", album.albumId, album.title));
-			writer.append(String.format("<td><a href=\"album/%s/xspf\">xspf</a></td></tr>", album.albumId));
+			writer.append(String.format("<tr><td><a href=\"album/%s\">%s</a></td>", album.getAlbumId(), album.getTitle()));
+			writer.append(String.format("<td><a href=\"album/%s/xspf\">xspf</a></td></tr>", album.getAlbumId()));
 		 }
 		 writer.append("</table>");
 		 writer.append("</html>");
@@ -213,7 +213,7 @@ public class AlbumResource
 	  Album album = getById(id);
 
 	  ResponseBuilder response = Response.ok(album, APPLICATION_XSPF_XML);
-	  response.header("Content-Disposition", String.format("attachment; filename=\"%s.xspf\"", album.albumId));
+	  response.header("Content-Disposition", String.format("attachment; filename=\"%s.xspf\"", album.getAlbumId()));
 	  return response.build();
    }
 

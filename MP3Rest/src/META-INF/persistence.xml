@@ -16,7 +16,7 @@
             <property
                 name="jboss.entity.manager.factory.jndi.name"
                 value="java:/MP3Rest" />
-            <property name="hibernate.hbm2ddl.auto" value="create"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
         </properties>
     </persistence-unit>
 

@@ -105,7 +105,7 @@ public class Track
 		 if (!trackSet.next()) {
 			trackSet.moveToInsertRow();
 			trackSet.updateObject(TRACKID, track.trackId);
-			trackSet.updateObject(ALBUMID, track.album.albumId);
+			trackSet.updateObject(ALBUMID, track.album.getAlbumId());
 			trackSet.updateInt(TRACKNO, track.trackNo);
 			trackSet.updateString(TITLE, track.title);
 			trackSet.updateString(PATH, track.path.toString());

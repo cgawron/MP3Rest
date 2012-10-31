@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
+import javax.persistence.Id;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
@@ -24,8 +25,10 @@ public class Album
 
    static Persister pers = null; // new Persister();
 
-   public String title;
-   public UUID albumId;
+   private String title;
+
+   @Id
+   private UUID albumId;
 
    static class Persister
    {
@@ -60,12 +63,12 @@ public class Album
 	  }
 
 	  void persist(Album album) throws SQLException {
-		 queryAlbumByTitle.setString(1, album.title);
+		 queryAlbumByTitle.setString(1, album.getTitle());
 		 ResultSet albumSet = queryAlbumByTitle.executeQuery();
 		 if (!albumSet.next()) {
 			albumSet.moveToInsertRow();
-			albumSet.updateObject(ALBUMID, album.albumId);
-			albumSet.updateString(TITLE, album.title);
+			albumSet.updateObject(ALBUMID, album.getAlbumId());
+			albumSet.updateString(TITLE, album.getTitle());
 			albumSet.insertRow();
 		 }
 		 albumSet.close();
@@ -83,7 +86,7 @@ public class Album
 
 	  List<UUID> getTrackIDs(Album album) throws SQLException, MalformedURLException {
 		 List<UUID> trackIDs = new ArrayList<UUID>();
-		 queryAlbumTracks.setObject(1, album.albumId);
+		 queryAlbumTracks.setObject(1, album.getAlbumId());
 		 ResultSet trackSet = queryAlbumTracks.executeQuery();
 		 while (trackSet.next()) {
 			UUID id = UUID.fromString(trackSet.getString(TRACKID));
@@ -105,22 +108,27 @@ public class Album
 	  }
    }
 
+   public Album()
+   {
+
+   }
+
    public Album(Album album)
    {
-	  this.title = album.title;
-	  this.albumId = album.albumId;
+	  this.setTitle(album.getTitle());
+	  this.setAlbumId(album.getAlbumId());
    }
 
    public Album(String title)
    {
-	  this.title = title;
-	  this.albumId = UUID.nameUUIDFromBytes(title.getBytes());
+	  this.setTitle(title);
+	  this.setAlbumId(UUID.nameUUIDFromBytes(title.getBytes()));
    }
 
    public Album(Track track)
    {
-	  this.title = track.albumTitle;
-	  this.albumId = UUID.nameUUIDFromBytes(title.getBytes());
+	  this.setTitle(track.albumTitle);
+	  this.setAlbumId(UUID.nameUUIDFromBytes(getTitle().getBytes()));
    }
 
    public void persist() throws SQLException {
@@ -147,6 +155,22 @@ public class Album
 	  if (pers == null)
 		 pers = new Persister();
 	  return Album.pers.getTrackIDs(this);
+   }
+
+   public String getTitle() {
+	  return title;
+   }
+
+   public void setTitle(String title) {
+	  this.title = title;
+   }
+
+   public UUID getAlbumId() {
+	  return albumId;
+   }
+
+   public void setAlbumId(UUID albumId) {
+	  this.albumId = albumId;
    }
 
 }

@@ -18,9 +18,9 @@ public class AudioBroadcast extends AudioItem
 	  setClazz(AUDIOBROADCAST);
    }
 
-   public AudioBroadcast(String id, String parentId, String radioCallSign, Res res)
+   public AudioBroadcast(String id, Container parent, String radioCallSign, Res res)
    {
-	  super(id, parentId);
+	  super(id, parent);
 	  setClazz(AUDIOBROADCAST);
 	  this.radioCallSign = radioCallSign;
 	  addResource(res);

@@ -23,9 +23,9 @@ public class AudioItem extends Item
 	  setClazz(AUDIOITEM);
    }
 
-   public AudioItem(String id, String parentId)
+   public AudioItem(String id, Container parent)
    {
-	  super(id, parentId);
+	  super(id, parent);
 	  setClazz(AUDIOITEM);
    }
 

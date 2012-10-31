@@ -1,9 +1,14 @@
 package de.cgawron.mp3.server.upnp.model;
 
 import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
 
+import javax.persistence.CascadeType;
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
+import javax.persistence.OneToMany;
+import javax.persistence.Transient;
 
 @Entity
 @DiscriminatorValue(DIDLObject.CONTAINER)
@@ -14,7 +19,19 @@ public class Container extends DIDLObject
 	  setClazz(CONTAINER);
    }
 
-   private int childCount;
+   public Container(String id, Container parent, String title, String creator)
+   {
+	  super(id, parent, title, creator);
+	  setClazz(CONTAINER);
+   }
+
+   public Container(String title)
+   {
+	  super(UUID.nameUUIDFromBytes(title.getBytes()).toString(), null, title, null);
+	  setClazz(CONTAINER);
+   }
+
+   private Set<DIDLObject> children;
    protected Collection<String> createClass;
    protected Collection<String> searchClass;
    private boolean searchable;
@@ -25,12 +42,9 @@ public class Container extends DIDLObject
 	  return null;
    }
 
+   @Transient
    public int getChildCount() {
-	  return childCount;
-   }
-
-   public void setChildCount(int childCount) {
-	  this.childCount = childCount;
+	  return 0;
    }
 
    public boolean isSearchable() {
@@ -40,4 +54,18 @@ public class Container extends DIDLObject
    public void setSearchable(boolean searchable) {
 	  this.searchable = searchable;
    }
+
+   public void addItem(Item dlfItem) {
+	  // TODO Auto-generated method stub
+   }
+
+   @OneToMany(cascade = CascadeType.ALL, mappedBy = "parent")
+   public Set<DIDLObject> getChildren() {
+	  return children;
+   }
+
+   public void setChildren(Set<DIDLObject> children) {
+	  this.children = children;
+   }
+
 }

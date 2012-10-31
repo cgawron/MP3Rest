@@ -12,9 +12,9 @@ public class Item extends DIDLObject
 	  setClazz(ITEM);
    }
 
-   public Item(String id, String parentId)
+   public Item(String id, Container parent)
    {
-	  super(id, parentId);
+	  super(id, parent);
 	  setClazz(ITEM);
    }
 

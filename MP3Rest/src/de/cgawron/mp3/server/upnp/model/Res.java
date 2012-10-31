@@ -2,6 +2,7 @@ package de.cgawron.mp3.server.upnp.model;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Path;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -22,6 +23,16 @@ public class Res
    {
 	  this.uri = uri;
 	  this.protocolInfo = protocolInfo;
+   }
+
+   public Res(Path path, String mimeType)
+   {
+	  this.uri = path.toUri();
+	  this.protocolInfo = protocolInfo(mimeType);
+   }
+
+   private String protocolInfo(String mimeType) {
+	  return String.format("http-get:*:%s:*", mimeType);
    }
 
    @Column(name = "uri")
