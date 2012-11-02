@@ -27,10 +27,10 @@ import javax.sql.DataSource;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import de.cgawron.mp3.server.upnp.model.Album;
-import de.cgawron.mp3.server.upnp.model.MusicAlbum;
 import de.cgawron.mp3.server.upnp.model.MusicTrack;
 
 @Path("/crawler")
@@ -38,7 +38,7 @@ public class Crawler
 {
    private static Logger logger = Logger.getLogger(Crawler.class.toString());
 
-   private static java.nio.file.Path root = FileSystems.getDefault().getPath("/opt/mp3");
+   private static java.nio.file.Path ROOT = FileSystems.getDefault().getPath("/opt/mp3");
    // private static String jdbcUrl = "jdbc:db2:Music";
    private static String jdbcUrl = "jdbc:postgresql://localhost:5433/postgres?user=music&password=mUsIc";
 
@@ -63,12 +63,12 @@ public class Crawler
 		 logger.info("dir " + path);
 
 		 if (albumTransaction == null) {
-			albumTransaction = em.getTransaction();
-			albumTransaction.begin();
+			// albumTransaction = em.getTransaction();
+			// albumTransaction.begin();
 		 }
 		 try {
 			logger.info("directory " + path);
-			album = new MusicAlbum(path.getFileName().toString());
+			album = null; // new MusicAlbum(path.getFileName().toString());
 		 } catch (Exception ex) {
 			logger.log(Level.SEVERE, "error visiting " + path, ex);
 			if (albumTransaction.isActive()) {
@@ -85,12 +85,12 @@ public class Crawler
 
 		 if (albumTransaction != null) {
 			try {
-			   album = em.merge(album);
-			   albumTransaction.commit();
+			   // album = em.merge(album);
+			   // albumTransaction.commit();
 			} catch (Exception e) {
 			   logger.log(Level.SEVERE, "error visiting " + path, e);
 			   if (albumTransaction.isActive()) {
-				  albumTransaction.rollback();
+				  // albumTransaction.rollback();
 			   }
 			} finally {
 			   albumTransaction = null;
@@ -105,9 +105,18 @@ public class Crawler
 		 String mimeType = Files.probeContentType(path);
 		 if (mimeType != null && mimeType.startsWith("audio/")) {
 			try {
+			   albumTransaction = em.getTransaction();
+			   albumTransaction.begin();
 			   logger.info("file " + path + " " + Files.probeContentType(path));
 			   MusicTrack track = new MusicTrack(album, path, mimeType);
-			   em.merge(track);
+			   MusicTrack emTrack = em.find(MusicTrack.class, track.getId());
+			   if (emTrack == null) {
+				  em.merge(track);
+			   }
+			   else {
+				  em.merge(track);
+			   }
+			   albumTransaction.commit();
 			} catch (Exception ex) {
 			   logger.log(Level.SEVERE, "error visiting " + path, ex);
 			   if (albumTransaction.isActive()) {
@@ -198,11 +207,14 @@ public class Crawler
    }
 
    @GET
-   @Path("start")
    @Produces({ MediaType.APPLICATION_XHTML_XML })
-   public String crawl() throws NamingException, IOException {
+   public String crawl(@QueryParam("root") String root) throws NamingException, IOException {
 	  FileVisitor<java.nio.file.Path> visitor = new UPNPFileVisitor();
-	  Files.walkFileTree(root, visitor);
+	  java.nio.file.Path rootPath = ROOT;
+	  if (root != null) {
+		 rootPath = FileSystems.getDefault().getPath(root);
+	  }
+	  Files.walkFileTree(rootPath, visitor);
 	  return "";
    }
 
@@ -218,7 +230,7 @@ public class Crawler
 
 	  long millis = System.currentTimeMillis();
 	  FileVisitor visitor = new UPNPFileVisitor();
-	  Files.walkFileTree(root, visitor);
+	  Files.walkFileTree(ROOT, visitor);
 	  millis = System.currentTimeMillis() - millis;
 	  // logger.info(String.format("%d files visited in %d ms",
 	  // visitor.numFiles, millis));

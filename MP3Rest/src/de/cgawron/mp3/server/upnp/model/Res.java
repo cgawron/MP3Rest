@@ -35,9 +35,12 @@ public class Res
 	  return String.format("http-get:*:%s:*", mimeType);
    }
 
-   @Column(name = "uri")
+   @Column(name = "uri", length = 512)
    public String getUriAsString() {
-	  return uri.toASCIIString();
+	  if (uri != null)
+		 return uri.toASCIIString();
+	  else
+		 return null;
    }
 
    @Transient

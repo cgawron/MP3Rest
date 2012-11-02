@@ -1,9 +1,7 @@
 package de.cgawron.mp3.server.upnp.model;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
 
-@Entity
+// @Entity
 public class Artist
 {
    String name;
@@ -17,7 +15,7 @@ public class Artist
 	  this.name = name;
    }
 
-   @Id
+   // @Id
    public String getName() {
 	  return name;
    }

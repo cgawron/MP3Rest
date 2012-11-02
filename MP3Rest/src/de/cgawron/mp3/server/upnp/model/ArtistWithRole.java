@@ -1,20 +1,21 @@
 package de.cgawron.mp3.server.upnp.model;
 
-import java.io.Serializable;
 import java.util.Set;
 
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.IdClass;
 import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
 
 @Entity
-@IdClass(ArtistWithRole.class)
-public class ArtistWithRole implements Serializable
+@Access(AccessType.FIELD)
+@IdClass(de.cgawron.mp3.server.upnp.model.ArtistWithRolePK.class)
+public class ArtistWithRole
 {
-   private static final long serialVersionUID = -324688838210861343L;
 
    public enum Role {
 	  Composer,
@@ -23,11 +24,14 @@ public class ArtistWithRole implements Serializable
 	  Unspecified
    }
 
-   Artist artist;
+   @Id
+   String artist;
 
+   @Id
    @Enumerated
    Role role;
 
+   @ManyToMany(cascade = CascadeType.ALL)
    Set<Item> items;
 
    public ArtistWithRole()
@@ -36,21 +40,19 @@ public class ArtistWithRole implements Serializable
 
    public ArtistWithRole(String artist, Role role)
    {
-	  this.artist = new Artist(artist);
+	  this.artist = artist;
 	  this.role = role;
    }
 
-   @Id
-   @ManyToOne
-   public Artist getArtist() {
+   // @ManyToOne(cascade = CascadeType.ALL)
+   public String getArtist() {
 	  return artist;
    }
 
-   public void setArtist(Artist artist) {
+   public void setArtist(String artist) {
 	  this.artist = artist;
    }
 
-   @Id
    public Role getRole() {
 	  return role;
    }
@@ -59,7 +61,6 @@ public class ArtistWithRole implements Serializable
 	  this.role = role;
    }
 
-   @ManyToMany
    public Set<Item> getItems() {
 	  return items;
    }

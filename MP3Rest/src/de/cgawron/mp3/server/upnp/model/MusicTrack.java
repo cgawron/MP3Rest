@@ -18,7 +18,6 @@ import java.util.logging.Logger;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Entity;
-import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 
 import org.jaudiotagger.audio.AudioFile;
@@ -26,6 +25,7 @@ import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.Tag;
 import org.jaudiotagger.tag.TagField;
+import org.jaudiotagger.tag.TagTextField;
 
 import de.cgawron.mp3.server.upnp.model.ArtistWithRole.Role;
 
@@ -64,7 +64,9 @@ public class MusicTrack extends AudioItem
 	  setMetadata(path);
 	  Res res = new Res(path, mimeType);
 	  addResource(res);
-	  album.addItem(this);
+	  if (album != null) {
+		 album.addItem(this);
+	  }
    }
 
    private void setMetadata(Path path) {
@@ -75,22 +77,31 @@ public class MusicTrack extends AudioItem
 		 setOriginalTrackNumber(Integer.parseInt(tag.getFirst(FieldKey.TRACK)));
 		 setTitle(tag.getFirst(FieldKey.TITLE));
 		 for (TagField field : tag.getFields(FieldKey.ARTIST)) {
-			logger.severe("adding artist " + field.toString());
-			addArtist(field.toString(), ArtistWithRole.Role.Unspecified);
+			if (field instanceof TagTextField) {
+			   TagTextField text = (TagTextField) field;
+			   logger.info("adding artist " + text.getContent());
+			   addArtist(text.getContent(), ArtistWithRole.Role.Unspecified);
+			}
 		 }
 		 for (TagField field : tag.getFields(FieldKey.COMPOSER)) {
-			logger.severe("adding composer " + field.toString());
-			addArtist(field.toString(), ArtistWithRole.Role.Composer);
+			if (field instanceof TagTextField) {
+			   TagTextField text = (TagTextField) field;
+			   logger.info("adding composer " + text.getContent());
+			   addArtist(text.getContent(), ArtistWithRole.Role.Composer);
+			}
 		 }
 		 for (TagField field : tag.getFields(FieldKey.CONDUCTOR)) {
-			logger.severe("adding conductor " + field.toString());
-			addArtist(field.toString(), ArtistWithRole.Role.Conductor);
+			if (field instanceof TagTextField) {
+			   TagTextField text = (TagTextField) field;
+			   logger.info("adding conductor " + text.getContent());
+			   addArtist(text.getContent(), ArtistWithRole.Role.Conductor);
+			}
 		 }
 
 		 Iterator<TagField> tags = tag.getFields();
 		 while (tags.hasNext()) {
 			TagField field = tags.next();
-			logger.severe("tag field: " + field.getId() + ": " + field.toString());
+			logger.info("tag field: " + field.getId() + ": " + field.toString());
 		 }
 
 	  } catch (Exception ex) {
@@ -102,8 +113,8 @@ public class MusicTrack extends AudioItem
    private void addArtist(String artist, Role role) {
 	  if (artists == null) {
 		 artists = new HashSet<ArtistWithRole>();
-		 artists.add(new ArtistWithRole(artist, role));
 	  }
+	  artists.add(new ArtistWithRole(artist, role));
    }
 
    public String getAlbum() {
@@ -115,7 +126,6 @@ public class MusicTrack extends AudioItem
    }
 
    @ManyToMany(cascade = CascadeType.ALL)
-   @JoinTable(name = "track_artists")
    public Set<ArtistWithRole> getArtists() {
 	  return artists;
    }
