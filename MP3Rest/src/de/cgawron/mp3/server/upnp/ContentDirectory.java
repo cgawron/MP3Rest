@@ -1,7 +1,9 @@
 package de.cgawron.mp3.server.upnp;
 
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -10,6 +12,15 @@ import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMResult;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.teleal.cling.UpnpService;
 import org.teleal.cling.UpnpServiceImpl;
@@ -29,24 +40,19 @@ import org.teleal.cling.model.types.UDN;
 import org.teleal.cling.support.contentdirectory.AbstractContentDirectoryService;
 import org.teleal.cling.support.contentdirectory.ContentDirectoryErrorCode;
 import org.teleal.cling.support.contentdirectory.ContentDirectoryException;
-import org.teleal.cling.support.contentdirectory.DIDLParser;
 import org.teleal.cling.support.model.BrowseFlag;
 import org.teleal.cling.support.model.BrowseResult;
-import org.teleal.cling.support.model.DIDLContent;
 import org.teleal.cling.support.model.SortCriterion;
+import org.w3c.dom.Node;
 
+import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
+
+import de.cgawron.mp3.server.upnp.model.Container;
+import de.cgawron.mp3.server.upnp.model.DIDLLite;
 import de.cgawron.mp3.server.upnp.model.DIDLObject;
 
 public class ContentDirectory extends AbstractContentDirectoryService implements Runnable
 {
-
-   public ContentDirectory() throws NamingException
-   {
-	  super();
-	  Context ic = new InitialContext();
-	  EntityManagerFactory entityManagerFactory = (EntityManagerFactory) ic.lookup("java:/MP3Rest");
-	  entityManager = entityManagerFactory.createEntityManager();
-   }
 
    public static final String ID_ROOT = "0";
    public static final String ID_ALBUMS = "1";
@@ -56,6 +62,38 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
    private static String contextPath;
 
    private EntityManager entityManager;
+   private Marshaller marshaller;
+
+   public ContentDirectory() throws NamingException, JAXBException
+   {
+	  super();
+	  Context ic = new InitialContext();
+	  EntityManagerFactory entityManagerFactory = (EntityManagerFactory) ic.lookup("java:/MP3Rest");
+	  entityManager = entityManagerFactory.createEntityManager();
+
+	  JAXBContext jc = JAXBContext.newInstance("de.cgawron.mp3.server.upnp.model");
+	  marshaller = jc.createMarshaller();
+	  marshaller.setProperty("com.sun.xml.bind.namespacePrefixMapper",
+		                     new NamespacePrefixMapper()
+		                     {
+			                    @Override
+			                    public String getPreferredPrefix(String namespaceUri,
+			                                                     String suggestion,
+			                                                     boolean requirePrefix) {
+			                       logger.info("getPreferredPrefix: " + namespaceUri + " " + suggestion);
+			                       switch (namespaceUri) {
+								   case "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/":
+									  return "";
+								   case "http://purl.org/dc/elements/1.1/":
+									  return "dc";
+								   case "urn:schemas-upnp-org:metadata-1-0/upnp/":
+									  return "upnp";
+								   default:
+									  return suggestion;
+								   }
+								}
+		                     });
+   }
 
    @Override
    public BrowseResult browse(String objectID, BrowseFlag browseFlag,
@@ -63,30 +101,20 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 	                          long firstResult, long maxResults,
 	                          SortCriterion[] orderby) throws ContentDirectoryException {
 	  try {
-		 logger.info(String.format("browse: objID=%s, flag=%s, filter=%s, first=%d, max=%d, orderBy=%s",
+		 logger.info(String.format("browse request: objID=%s, flag=%s, filter=%s, first=%d, max=%d, orderBy=%s",
 			                       objectID, browseFlag, filter, firstResult, maxResults, Arrays.asList(orderby)));
 
-		 DIDLContent content = new DIDLContent();
 		 DIDLObject object = entityManager.find(DIDLObject.class, objectID);
-		 logger.info("browse: object=" + object);
-		 /*
-		  * int totalMatches = 0; if (browseFlag == BrowseFlag.DIRECT_CHILDREN)
-		  * { int i = 0; if (object instanceof Container) { Container container
-		  * = (Container) object; for (Container obj :
-		  * container.getContainers()) { if (i >= firstResult && i < firstResult
-		  * + maxResults) content.addContainer(obj); i++; } for (Item obj :
-		  * container.getItems()) { if (i >= firstResult && i < firstResult +
-		  * maxResults) content.addItem(obj); i++; } } totalMatches = i; } else
-		  * { if (object instanceof Container) {
-		  * content.addContainer((Container) object); } else if (object
-		  * instanceof Item) { content.addItem((Item) object); } totalMatches =
-		  * 1; }
-		  */
-		 int count = content.getContainers().size() + content.getItems().size();
-		 logger.info("returning " + content.getContainers() + " " + content.getItems() + " [" + count + "]");
-		 return new BrowseResult(new DIDLParser().generate(content), count, 0);
+		 if (object == null)
+			logger.info("browse: object not found");
 
-	  } catch (Exception ex) {
+		 BrowseResult result = createBrowseResult(object, browseFlag, filter, (int) firstResult, (int) maxResults);
+		 logger.info("result: " + result.getResult());
+
+		 return result;
+
+	  } catch (Throwable ex) {
+		 logger.log(Level.SEVERE, "exception in browse", ex);
 		 throw new ContentDirectoryException(ContentDirectoryErrorCode.CANNOT_PROCESS,
 			                                 ex.toString());
 	  }
@@ -186,7 +214,7 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 
    static LocalDevice createDevice(String contextPath)
    throws ValidationException, LocalServiceBindingException, IOException {
-	  ContentDirectory.contextPath = "http://192.168.10.2:8080" + contextPath;
+	  ContentDirectory.contextPath = contextPath;
 	  DeviceIdentity identity = new DeviceIdentity(UDN.uniqueSystemIdentifier("Demo ContentDirectory"));
 
 	  DeviceType type = new UDADeviceType("MediaServer", 1);
@@ -239,5 +267,62 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 	  } catch (Exception ex) {
 		 logger.log(Level.SEVERE, "Exception occored", ex);
 	  }
+   }
+
+   protected BrowseResult createBrowseResult(DIDLObject object, BrowseFlag browseFlag, String filter, int firstResult, int maxResults)
+   throws Exception
+   {
+	  DIDLLite didl;
+	  int numberReturned = 1;
+	  int totalMatches = 1;
+	  List<DIDLObject> children = null;
+	  if (browseFlag == BrowseFlag.DIRECT_CHILDREN && object instanceof Container) {
+		 Container container = (Container) object;
+		 totalMatches = container.getChildren().size();
+		 if (maxResults > 0) {
+			children = container.getChildren().subList(firstResult,
+			                                           (firstResult + maxResults) < totalMatches ? firstResult + maxResults : totalMatches);
+		 }
+		 else {
+			children = container.getChildren().subList(firstResult, totalMatches);
+		 }
+		 numberReturned = children.size();
+		 didl = new DIDLLite();
+		 didl.setChildren(children);
+	  } else {
+		 didl = new DIDLLite(object);
+	  }
+
+	  DOMResult document = new DOMResult();
+	  marshaller.marshal(didl, document);
+
+	  return new BrowseResult(nodeToString(document.getNode(), false), numberReturned, totalMatches);
+   }
+
+   protected static String nodeToString(Node node, boolean omitProlog) throws Exception {
+	  TransformerFactory transFactory = TransformerFactory.newInstance();
+
+	  transFactory.setAttribute("indent-number", 4);
+	  Transformer transformer = transFactory.newTransformer();
+
+	  if (omitProlog) {
+		 // TODO: UPNP VIOLATION: Terratec Noxon Webradio fails when DIDL
+		 // content has a prolog
+		 // No XML prolog! This is allowed because it is UTF-8 encoded and
+		 // required
+		 // because broken devices will stumble on SOAP messages that contain
+		 // (even
+		 // encoded) XML prologs within a message body.
+		 transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+	  }
+	  transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+
+	  StringWriter out = new StringWriter();
+	  transformer.transform(new DOMSource(node), new StreamResult(out));
+	  return out.toString();
+   }
+
+   public static String getUriForResource(String id) {
+	  return contextPath + "/rest/track/" + id + "/content";
    }
 }

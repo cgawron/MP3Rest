@@ -31,6 +31,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import de.cgawron.mp3.server.upnp.model.Album;
+import de.cgawron.mp3.server.upnp.model.Container;
 import de.cgawron.mp3.server.upnp.model.MusicTrack;
 
 @Path("/crawler")
@@ -49,6 +50,7 @@ public class Crawler
 	  EntityManager em;
 	  EntityTransaction albumTransaction;
 	  Album album;
+	  Container rootContainer;
 
 	  UPNPFileVisitor() throws NamingException
 	  {
@@ -56,6 +58,11 @@ public class Crawler
 		 Context ic = new InitialContext();
 		 EntityManagerFactory entityManagerFactory = (EntityManagerFactory) ic.lookup("java:/MP3Rest");
 		 em = entityManagerFactory.createEntityManager();
+		 rootContainer = em.find(Container.class, Container.ROOTID);
+		 if (rootContainer == null) {
+			rootContainer = new Container(Container.ROOTID);
+			em.persist(rootContainer);
+		 }
 	  }
 
 	  @Override
@@ -108,7 +115,7 @@ public class Crawler
 			   albumTransaction = em.getTransaction();
 			   albumTransaction.begin();
 			   logger.info("file " + path + " " + Files.probeContentType(path));
-			   MusicTrack track = new MusicTrack(album, path, mimeType);
+			   MusicTrack track = new MusicTrack(rootContainer, path, mimeType);
 			   MusicTrack emTrack = em.find(MusicTrack.class, track.getId());
 			   if (emTrack == null) {
 				  em.merge(track);

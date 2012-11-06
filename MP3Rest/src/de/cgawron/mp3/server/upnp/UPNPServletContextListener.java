@@ -59,7 +59,8 @@ public class UPNPServletContextListener implements javax.servlet.ServletContextL
 		 if (upnpService == null) {
 			logger.info("starting UPNP service");
 			upnpService = new UpnpServiceImpl(new UpnpServiceConfiguration());
-			upnpService.getRegistry().addDevice(ContentDirectory.createDevice(event.getServletContext().getContextPath()));
+			String fullContextPath = event.getServletContext().getInitParameter("baseURL") + event.getServletContext().getContextPath();
+			upnpService.getRegistry().addDevice(ContentDirectory.createDevice(fullContextPath));
 		 }
 	  } catch (Exception ex) {
 		 logger.log(Level.SEVERE, "Exception occored", ex);

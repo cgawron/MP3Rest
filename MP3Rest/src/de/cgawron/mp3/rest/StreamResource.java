@@ -1,17 +1,23 @@
 package de.cgawron.mp3.rest;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.logging.Logger;
 
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -29,10 +35,12 @@ import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.TagField;
 import org.jaudiotagger.tag.TagTextField;
 
+import de.cgawron.mp3.server.upnp.model.Res;
+
 @Path("/track")
-public class TrackResource
+public class StreamResource
 {
-   private static Logger logger = Logger.getLogger(TrackResource.class.toString());
+   private static Logger logger = Logger.getLogger(StreamResource.class.toString());
 
    @Context
    UriInfo uriInfo;
@@ -124,13 +132,37 @@ public class TrackResource
 
    @GET
    @Path("{id}/content")
-   public Response getFile(@PathParam("id") String id) throws SQLException {
-	  Track track = getById(id);
+   public Response getFile(@PathParam("id") String id, @HeaderParam("Range") String range) throws SQLException, NamingException,
+   MalformedURLException, IOException {
+	  ResponseBuilder response;
+	  InitialContext ic = new InitialContext();
+	  EntityManagerFactory entityManagerFactory = (EntityManagerFactory) ic.lookup("java:/MP3Rest");
+	  EntityManager em = entityManagerFactory.createEntityManager();
 
-	  File f = track.getFile();
+	  logger.info("id=" + id + ", range=" + range);
+	  String key = "http://192.168.10.2:8080/MP3Rest/rest/track/" + id + "/content";
+	  logger.info("key=" + key);
 
-	  ResponseBuilder response = Response.ok((Object) f);
-	  response.type("audio/mpeg");
+	  // Query query = em.createNativeQuery("select * from res where uri = '" +
+	  // key + "'", Res.class);
+	  Res res = em.find(Res.class, id);
+	  logger.info("res=" + res);
+
+	  if (res == null) {
+		 response = Response.noContent();
+	  }
+	  else {
+		 URI uri = res.getInternalUri();
+		 InputStream stream = uri.toURL().openConnection().getInputStream();
+		 if (range != null && range.length() > 0) {
+			int offset = range.indexOf('-');
+			int skip = Integer.parseInt(range.substring("bytes=".length(), offset));
+			stream.skip(skip);
+		 }
+		 response = Response.ok(stream);
+		 response.type("audio/mpeg");
+		 response.header("Accept-Ranges", "bytes");
+	  }
 	  return response.build();
    }
 }

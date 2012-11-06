@@ -7,14 +7,19 @@ import java.util.UUID;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.DiscriminatorColumn;
-import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.Transient;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlTransient;
 
+//@XmlRootElement(namespace = "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/")
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "class")
@@ -31,12 +36,11 @@ public abstract class DIDLObject
    public static final String MUSICALBUM = "object.container.album.musicAlbum";
 
    private String id;
-
    private Container parent;
-   private String title;
-   private String creator;
+   private String title = "";
+   private String creator = "";
    private String clazz;
-   private String restricted;
+   private boolean restricted;
    private List<Res> resources;
 
    /**
@@ -67,6 +71,7 @@ public abstract class DIDLObject
 	  setCreator(creator);
    }
 
+   @XmlTransient
    @ManyToOne(cascade = CascadeType.ALL)
    @JoinColumn(name = "parentId")
    public Container getParent() {
@@ -77,6 +82,17 @@ public abstract class DIDLObject
 	  this.parent = parent;
    }
 
+   @XmlAttribute
+   @Transient
+   public String getParentID()
+   {
+	  if (parent == null)
+		 return "-1";
+	  else
+		 return parent.getId();
+   }
+
+   @XmlElement(required = true, defaultValue = "", namespace = "http://purl.org/dc/elements/1.1/")
    public String getTitle() {
 	  return title;
    }
@@ -85,6 +101,7 @@ public abstract class DIDLObject
 	  this.title = title;
    }
 
+   @XmlElement(namespace = "http://purl.org/dc/elements/1.1/")
    public String getCreator() {
 	  return creator;
    }
@@ -94,6 +111,7 @@ public abstract class DIDLObject
    }
 
    @Column(name = "class")
+   @XmlElement(name = "class", required = true, namespace = "urn:schemas-upnp-org:metadata-1-0/upnp/")
    public String getClazz() {
 	  return clazz;
    }
@@ -102,14 +120,16 @@ public abstract class DIDLObject
 	  this.clazz = clazz;
    }
 
-   public String getRestricted() {
+   @XmlAttribute
+   public boolean isRestricted() {
 	  return restricted;
    }
 
-   public void setRestricted(String restricted) {
+   public void setRestricted(boolean restricted) {
 	  this.restricted = restricted;
    }
 
+   @XmlAttribute
    @Id
    public String getId() {
 	  return id;
@@ -123,7 +143,8 @@ public abstract class DIDLObject
 	  this.id = id.toString();
    }
 
-   @ElementCollection
+   @XmlElement(name = "res")
+   @ManyToMany(cascade = CascadeType.ALL)
    public List<Res> getResources() {
 	  return resources;
    }
@@ -138,6 +159,12 @@ public abstract class DIDLObject
 		 setResources(new ArrayList<Res>());
 	  }
 	  resources.add(res);
+   }
+
+   @Override
+   public String toString() {
+	  return String.format("DIDLObject [id=%s, parent=%s, title=%s, creator=%s, clazz=%s, resources=%s]",
+		                   id, parent.getId(), title, creator, clazz, resources);
    }
 
 }

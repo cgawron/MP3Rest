@@ -1,6 +1,7 @@
 package de.cgawron.mp3.server.upnp.model;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
@@ -56,16 +57,16 @@ public class MusicTrack extends AudioItem
 	  setClazz(DIDLObject.MUSICTRACK);
    }
 
-   public MusicTrack(Album album, Path path, String mimeType) throws IOException
+   public MusicTrack(Container container, Path path, String mimeType) throws IOException, URISyntaxException
    {
-	  super(uuidForPath(path).toString(), album);
+	  super(uuidForPath(path).toString(), container);
 	  setClazz(DIDLObject.MUSICTRACK);
 	  logger.info("calling setMetadata");
 	  setMetadata(path);
-	  Res res = new Res(path, mimeType);
+	  Res res = new Res(path, getId(), mimeType);
 	  addResource(res);
-	  if (album != null) {
-		 album.addItem(this);
+	  if (container != null) {
+		 container.addItem(this);
 	  }
    }
 

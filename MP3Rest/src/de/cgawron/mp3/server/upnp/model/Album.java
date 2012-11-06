@@ -24,7 +24,9 @@ public class Album extends Container
 
    public Album(String title)
    {
-	  super(title);
 	  setClazz(DIDLObject.ALBUM);
+	  throw new RuntimeException("not implemented");
+
    }
+
 }

@@ -5,29 +5,37 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 
 import javax.persistence.Column;
-import javax.persistence.Embeddable;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import javax.persistence.Transient;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlValue;
 
-@Embeddable
+import de.cgawron.mp3.server.upnp.ContentDirectory;
+
+@Entity
 public class Res
 {
-   private URI uri;
-
+   private URI internalUri;
+   private String id;
    private String protocolInfo;
 
    public Res()
    {
    }
 
-   public Res(URI uri, String protocolInfo)
+   public Res(URI internalUri, String id, String protocolInfo)
    {
-	  this.uri = uri;
+	  this.internalUri = internalUri;
+	  this.id = id;
 	  this.protocolInfo = protocolInfo;
    }
 
-   public Res(Path path, String mimeType)
+   public Res(Path path, String id, String mimeType)
    {
-	  this.uri = path.toUri();
+	  this.id = id;
+	  this.internalUri = path.toUri();
 	  this.protocolInfo = protocolInfo(mimeType);
    }
 
@@ -35,32 +43,53 @@ public class Res
 	  return String.format("http-get:*:%s:*", mimeType);
    }
 
-   @Column(name = "uri", length = 512)
-   public String getUriAsString() {
-	  if (uri != null)
-		 return uri.toASCIIString();
-	  else
-		 return null;
+   @XmlTransient
+   @Id
+   @Column(name = "id")
+   public String getId() {
+	  return id;
    }
 
+   @XmlValue
    @Transient
-   public URI getUri() {
-	  return uri;
+   public String getUri() {
+	  return ContentDirectory.getUriForResource(id);
    }
 
-   public void setUri(URI uri) {
-	  this.uri = uri;
+   public void setId(String id) {
+	  this.id = id;
    }
 
-   public void setUriAsString(String uri) throws URISyntaxException {
-	  this.uri = new URI(uri);
-   }
-
+   @XmlAttribute
    public String getProtocolInfo() {
 	  return protocolInfo;
    }
 
    public void setProtocolInfo(String protocolInfo) {
 	  this.protocolInfo = protocolInfo;
+   }
+
+   @XmlTransient
+   @Transient
+   @Id
+   public URI getInternalUri() {
+	  return internalUri;
+   }
+
+   @XmlTransient
+   @Column(name = "internalUri", length = 512)
+   public String getInternalUriAsString() {
+	  if (internalUri != null)
+		 return internalUri.toASCIIString();
+	  else
+		 return null;
+   }
+
+   public void seInternalUri(URI internalUri) {
+	  this.internalUri = internalUri;
+   }
+
+   public void setInternalUriAsString(String uri) throws URISyntaxException {
+	  this.internalUri = new URI(uri);
    }
 }
