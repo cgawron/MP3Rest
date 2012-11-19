@@ -1,9 +1,11 @@
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
+
+import java.util.UUID;
 
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
+import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 
 @XmlType(name = "item.type")
@@ -25,8 +27,8 @@ public class Item extends DIDLObject
 
    private String refID;
 
-   // @XmlAttribute(namespace = "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/")
-   @XmlTransient
+   @XmlAttribute
+   // @XmlTransient
    public String getRefID() {
 	  return refID;
    }
@@ -36,8 +38,10 @@ public class Item extends DIDLObject
    }
 
    @Override
-   public org.teleal.cling.support.model.item.Item toClingModel() {
-	  // TODO Auto-generated method stub
-	  return null;
+   public Item clone() throws CloneNotSupportedException {
+	  Item clone = (Item) (super.clone());
+	  clone.setRefID(getId());
+	  clone.setId(UUID.randomUUID());
+	  return clone;
    }
 }

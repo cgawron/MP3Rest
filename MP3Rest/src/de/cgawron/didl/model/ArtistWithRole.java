@@ -1,4 +1,4 @@
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
 
 import java.util.Set;
 
@@ -10,17 +10,23 @@ import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.IdClass;
 import javax.persistence.ManyToMany;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlEnum;
+import javax.xml.bind.annotation.XmlEnumValue;
+import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.XmlValue;
 
 @Entity
 @Access(AccessType.FIELD)
-@IdClass(de.cgawron.mp3.server.upnp.model.ArtistWithRolePK.class)
+@IdClass(de.cgawron.didl.model.ArtistWithRolePK.class)
 public class ArtistWithRole
 {
-
+   @XmlEnum(String.class)
    public enum Role {
 	  Composer,
 	  Soloist,
 	  Conductor,
+	  @XmlEnumValue("")
 	  Unspecified
    }
 
@@ -44,7 +50,7 @@ public class ArtistWithRole
 	  this.role = role;
    }
 
-   // @ManyToOne(cascade = CascadeType.ALL)
+   @XmlValue
    public String getArtist() {
 	  return artist;
    }
@@ -53,6 +59,7 @@ public class ArtistWithRole
 	  this.artist = artist;
    }
 
+   @XmlAttribute
    public Role getRole() {
 	  return role;
    }
@@ -61,6 +68,7 @@ public class ArtistWithRole
 	  this.role = role;
    }
 
+   @XmlTransient
    public Set<Item> getItems() {
 	  return items;
    }

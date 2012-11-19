@@ -1,4 +1,4 @@
-package de.cgawron.mp3.server;
+package de.cgawron.mp3.crawler;
 
 import static java.nio.file.FileVisitResult.CONTINUE;
 
@@ -10,16 +10,16 @@ import java.nio.file.Files;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
+import javax.persistence.EntityExistsException;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
@@ -30,9 +30,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
-import de.cgawron.mp3.server.upnp.model.Album;
-import de.cgawron.mp3.server.upnp.model.Container;
-import de.cgawron.mp3.server.upnp.model.MusicTrack;
+import de.cgawron.didl.model.Album;
+import de.cgawron.didl.model.Container;
+import de.cgawron.didl.model.DIDLObject;
+import de.cgawron.mp3.server.upnp.ContentDirectory;
 
 @Path("/crawler")
 public class Crawler
@@ -41,9 +42,21 @@ public class Crawler
 
    private static java.nio.file.Path ROOT = FileSystems.getDefault().getPath("/opt/mp3");
    // private static String jdbcUrl = "jdbc:db2:Music";
-   private static String jdbcUrl = "jdbc:postgresql://localhost:5433/postgres?user=music&password=mUsIc";
+   // private static String jdbcUrl =
+   // "jdbc:postgresql://localhost:5433/postgres?user=music&password=mUsIc";
 
    private static Connection con;
+
+   private static ServiceLoader<Indexer> indexerLoader = ServiceLoader.load(Indexer.class);
+   private static Map<String, Indexer> indexerMap = new HashMap<String, Indexer>();
+
+   public Crawler()
+   {
+	  for (Indexer indexer : indexerLoader) {
+		 logger.info("indexer: " + indexer.mimeTypesSupported() + " " + indexer.getClass().getName());
+		 registerIndexer(indexer);
+	  }
+   }
 
    static class UPNPFileVisitor extends SimpleFileVisitor<java.nio.file.Path>
    {
@@ -58,11 +71,8 @@ public class Crawler
 		 Context ic = new InitialContext();
 		 EntityManagerFactory entityManagerFactory = (EntityManagerFactory) ic.lookup("java:/MP3Rest");
 		 em = entityManagerFactory.createEntityManager();
-		 rootContainer = em.find(Container.class, Container.ROOTID);
-		 if (rootContainer == null) {
-			rootContainer = new Container(Container.ROOTID);
-			em.persist(rootContainer);
-		 }
+		 rootContainer = Container.getRootContainer(em);
+
 	  }
 
 	  @Override
@@ -73,6 +83,7 @@ public class Crawler
 			// albumTransaction = em.getTransaction();
 			// albumTransaction.begin();
 		 }
+		 ;
 		 try {
 			logger.info("directory " + path);
 			album = null; // new MusicAlbum(path.getFileName().toString());
@@ -110,87 +121,63 @@ public class Crawler
 	  @Override
 	  public FileVisitResult visitFile(java.nio.file.Path path, BasicFileAttributes attr) throws IOException {
 		 String mimeType = Files.probeContentType(path);
-		 if (mimeType != null && mimeType.startsWith("audio/")) {
-			try {
-			   albumTransaction = em.getTransaction();
-			   albumTransaction.begin();
-			   logger.info("file " + path + " " + Files.probeContentType(path));
-			   MusicTrack track = new MusicTrack(rootContainer, path, mimeType);
-			   MusicTrack emTrack = em.find(MusicTrack.class, track.getId());
-			   if (emTrack == null) {
-				  em.merge(track);
-			   }
-			   else {
-				  em.merge(track);
-			   }
-			   albumTransaction.commit();
-			} catch (Exception ex) {
-			   logger.log(Level.SEVERE, "error visiting " + path, ex);
-			   if (albumTransaction.isActive()) {
-				  albumTransaction.rollback();
-			   }
-			}
-		 }
-		 return CONTINUE;
-	  }
-   }
+		 logger.info("file " + path + " " + mimeType);
 
-   static class MyFileVisitor extends SimpleFileVisitor<java.nio.file.Path>
-   {
-	  int numFiles = 0;
-
-	  PreparedStatement insertFile;
-	  PreparedStatement queryFile;
-	  PreparedStatement updateFile;
-
-	  MyFileVisitor() throws SQLException
-	  {
-		 con = getConnection();
-		 insertFile = con.prepareStatement("INSERT INTO CRAWLER (PATH, MODIFIED, STATE) values (?, ?, ?) ");
-		 queryFile = con.prepareStatement("SELECT MODIFIED, STATE FROM CRAWLER WHERE PATH=? ");
-		 updateFile = con.prepareStatement("UPDATE CRAWLER SET MODIFIED=?, STATE=? WHERE PATH=? ");
-	  }
-
-	  @Override
-	  public FileVisitResult preVisitDirectory(java.nio.file.Path path, BasicFileAttributes attr) throws IOException {
-		 logger.info("dir " + path);
-		 insertPath(path, attr);
-		 numFiles++;
-		 return CONTINUE;
-	  }
-
-	  @Override
-	  public FileVisitResult visitFile(java.nio.file.Path path, BasicFileAttributes attr) throws IOException {
-		 String mimeType = Files.probeContentType(path);
-		 if (mimeType != null && mimeType.startsWith("audio/")) {
-			logger.info("file " + path + " " + Files.probeContentType(path));
-			insertPath(path, attr);
-			numFiles++;
-		 }
-		 return CONTINUE;
-	  }
-
-	  public void insertPath(java.nio.file.Path path, BasicFileAttributes attr) {
 		 try {
-			queryFile.setString(1, path.toString());
-
-			if (queryFile.executeQuery().next()) {
-			   logger.info("Path " + path + " already in DB");
-			   // TODO: Check for modification time/status
-			} else {
-			   insertFile.setString(1, path.toString());
-			   insertFile.setTimestamp(2, new Timestamp(attr.lastModifiedTime().toMillis()));
-			   insertFile.setInt(3, 1);
-			   insertFile.execute();
-			   con.commit();
+			albumTransaction = em.getTransaction();
+			if (albumTransaction.isActive()) {
+			   albumTransaction.rollback();
 			}
-		 } catch (SQLException e) {
-			logger.log(Level.SEVERE, "error inserting data", e);
-			throw new RuntimeException(e);
+			albumTransaction.begin();
+			DIDLObject object;
+
+			if (mimeType != null) {
+			   Indexer indexer = indexerMap.get(mimeType);
+
+			   if (indexer != null) {
+				  object = indexer.indexFile(em, path, mimeType);
+				  if (object != null) {
+					 if (object.getParent() == null)
+						object.setParent(rootContainer);
+					 logger.info("track id=" + object.getId() + ", parent id=" + object.getParentID());
+					 if (em.find(DIDLObject.class, object.getId()) == null) {
+						// em.persist(track);
+						object = em.merge(object);
+					 }
+					 else {
+						object = em.merge(object);
+					 }
+				  }
+			   }
+
+			}
+			em.flush();
+			albumTransaction.commit();
+			ContentDirectory.changeSystemUpdateId();
+		 } catch (EntityExistsException ex) {
+			logger.log(Level.SEVERE, "entity already exists " + path, ex);
+
+			if (albumTransaction.isActive()) {
+			   albumTransaction.rollback();
+			}
+		 } catch (Exception ex) {
+			logger.log(Level.SEVERE, "error visiting " + path, ex);
+			if (albumTransaction.isActive()) {
+			   albumTransaction.rollback();
+			}
 		 }
+
+		 return CONTINUE;
 	  }
    }
 
+   public static void registerIndexer(Indexer indexer) {
+	  for (String mimeType : indexer.mimeTypesSupported()) {
+		 indexerMap.put(mimeType, indexer);
+	  }
+   }
+
+   @Deprecated
    public static Connection getConnection() {
 	  if (con == null) {
 		 try {
@@ -202,7 +189,7 @@ public class Crawler
 		 } catch (Exception e1) {
 			logger.log(Level.WARNING, "error opening JDBC connection via JNDI", e1);
 			try {
-			   con = DriverManager.getConnection(jdbcUrl);
+			   // con = DriverManager.getConnection(jdbcUrl);
 			   con.setAutoCommit(false);
 			} catch (Exception e2) {
 			   logger.log(Level.SEVERE, "error opening JDBC connection via URL", e2);

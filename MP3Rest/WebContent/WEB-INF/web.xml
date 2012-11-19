@@ -22,7 +22,25 @@
     <res-auth>Container</res-auth>
     <lookup-name>java:jboss/datasources/musicDB</lookup-name>
   </resource-ref>
+  <!-- 
+    <resource-ref>
+    <description>
+ 	    EntityManager
+ 	  </description>
+    <res-ref-name>em</res-ref-name>
+    <res-type>javax.persistence.EntityManager</res-type>
+    <res-auth>Container</res-auth>
+    <lookup-name>java:comp/env/MP3Rest</lookup-name>
+  </resource-ref>
+  -->
   <listener>
-    <listener-class>de.cgawron.mp3.server.upnp.UPNPServletContextListener</listener-class>
-  </listener>
+      <listener-class>
+de.cgawron.mp3.server.upnp.UPNPServletContextListener
+        </listener-class>
+    </listener>
+  <context-param>
+  	<param-name>baseURL</param-name>
+  	<param-value>http://192.168.10.2:8080</param-value>
+  </context-param>
+
 </web-app>

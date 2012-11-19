@@ -2,6 +2,8 @@ package de.cgawron.mp3.server.upnp;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
@@ -47,9 +49,12 @@ import org.w3c.dom.Node;
 
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 
-import de.cgawron.mp3.server.upnp.model.Container;
-import de.cgawron.mp3.server.upnp.model.DIDLLite;
-import de.cgawron.mp3.server.upnp.model.DIDLObject;
+import de.cgawron.didl.model.BlobRes;
+import de.cgawron.didl.model.Container;
+import de.cgawron.didl.model.DIDLLite;
+import de.cgawron.didl.model.DIDLObject;
+import de.cgawron.didl.model.FileRes;
+import de.cgawron.didl.model.Res;
 
 public class ContentDirectory extends AbstractContentDirectoryService implements Runnable
 {
@@ -63,6 +68,8 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 
    private EntityManager entityManager;
    private Marshaller marshaller;
+   public static ContentDirectory theContentDirectory;
+   private static LocalDevice device;
 
    public ContentDirectory() throws NamingException, JAXBException
    {
@@ -71,7 +78,7 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 	  EntityManagerFactory entityManagerFactory = (EntityManagerFactory) ic.lookup("java:/MP3Rest");
 	  entityManager = entityManagerFactory.createEntityManager();
 
-	  JAXBContext jc = JAXBContext.newInstance("de.cgawron.mp3.server.upnp.model");
+	  JAXBContext jc = JAXBContext.newInstance("de.cgawron.didl.model");
 	  marshaller = jc.createMarshaller();
 	  marshaller.setProperty("com.sun.xml.bind.namespacePrefixMapper",
 		                     new NamespacePrefixMapper()
@@ -80,7 +87,6 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 			                    public String getPreferredPrefix(String namespaceUri,
 			                                                     String suggestion,
 			                                                     boolean requirePrefix) {
-			                       logger.info("getPreferredPrefix: " + namespaceUri + " " + suggestion);
 			                       switch (namespaceUri) {
 								   case "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/":
 									  return "";
@@ -93,6 +99,7 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 								   }
 								}
 		                     });
+	  theContentDirectory = this;
    }
 
    @Override
@@ -107,6 +114,10 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 		 DIDLObject object = entityManager.find(DIDLObject.class, objectID);
 		 if (object == null)
 			logger.info("browse: object not found");
+		 else {
+			entityManager.refresh(object);
+			logger.info("object=" + object);
+		 }
 
 		 BrowseResult result = createBrowseResult(object, browseFlag, filter, (int) firstResult, (int) maxResults);
 		 logger.info("result: " + result.getResult());
@@ -181,36 +192,28 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
     * didl.setSearchable(true); return didl; }
     */
 
-   /*
-    * @Override public BrowseResult search(String containerId, String
-    * searchCriteria, String filter, long firstResult, long maxResults,
-    * SortCriterion[] orderBy) throws ContentDirectoryException { // You can
-    * override this method to implement searching! logger.info(String.format(
-    * "search: container=%s, search=%s, filter=%s, first=%d, max=%d, orderBy=%s"
-    * , containerId, searchCriteria, filter, firstResult, maxResults, orderBy));
-    * 
-    * // upnp:class derivedfrom "object.item.audioItem" and @refID exists false
-    * 
-    * try { DIDLContent content = new DIDLContent(); Collection<DIDLObject>
-    * searchResult = doSearch(searchCriteria);
-    * 
-    * int i = 0; int count = 0; for (DIDLObject object : searchResult) { if (i
-    * >= firstResult) { if (maxResults == 0 || count <= maxResults) { if (object
-    * instanceof Item) content.addItem((Item) object); else
-    * content.addContainer((Container) object); count++; } } i++; }
-    * logger.info("returning " + content.getContainers() + " " +
-    * content.getItems() + " [" + count + "]"); return new BrowseResult(new
-    * DIDLParser().generate(content), count, searchResult.size()); } catch
-    * (Exception ex) { throw new
-    * ContentDirectoryException(ContentDirectoryErrorCode.CANNOT_PROCESS,
-    * ex.toString()); } }
-    * 
-    * private Collection<DIDLObject> doSearch(String searchCriteria) throws
-    * URISyntaxException { Collection<DIDLObject> result = new
-    * ArrayList<DIDLObject>(); result.add(getDLFItem());
-    * 
-    * return result; }
-    */
+   @Override
+   public BrowseResult search(String containerId, String
+	                          searchCriteria, String filter, long firstResult, long maxResults,
+	                          SortCriterion[] orderBy) throws ContentDirectoryException {
+	  // You can override this method to implement searching!
+	  try {
+		 logger.info(String.format(
+			                       "search: container=%s, search=%s, filter=%s, first=%d, max=%d, orderBy=%s"
+			                       , containerId, searchCriteria, filter, firstResult, maxResults, orderBy));
+
+		 // upnp:class derivedfrom "object.item.audioItem" and @refID exists
+		 // false
+		 BrowseResult result = createBrowseResult(Container.getRootContainer(entityManager).getChildren(),
+			                                      filter, (int) firstResult, (int) maxResults);
+		 logger.info("result: " + result.getResult());
+		 return result;
+	  } catch (Throwable ex) {
+		 logger.log(Level.SEVERE, "exception in browse", ex);
+		 throw new ContentDirectoryException(ContentDirectoryErrorCode.CANNOT_PROCESS,
+			                                 ex.toString());
+	  }
+   }
 
    static LocalDevice createDevice(String contextPath)
    throws ValidationException, LocalServiceBindingException, IOException {
@@ -231,7 +234,8 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 	  new DefaultServiceManager(contentDirectoryService, ContentDirectory.class)
 	  );
 
-	  return new LocalDevice(identity, type, details, contentDirectoryService);
+	  device = new LocalDevice(identity, type, details, contentDirectoryService);
+	  return device;
 
 	  /*
 	   * Several services can be bound to the same device: return new
@@ -269,6 +273,28 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 	  }
    }
 
+   protected BrowseResult createBrowseResult(List<DIDLObject> object, String filter, int firstResult, int maxResults)
+   throws Exception
+   {
+	  DIDLLite didl;
+	  int numberReturned = 1;
+	  int totalMatches = 1;
+	  totalMatches = object.size();
+	  List<DIDLObject> children = object.subList(firstResult, totalMatches);
+	  ;
+	  if (maxResults > 0) {
+		 children = object.subList(firstResult,
+			                       (firstResult + maxResults) < totalMatches ? firstResult + maxResults : totalMatches);
+	  }
+	  numberReturned = children.size();
+	  didl = new DIDLLite();
+	  didl.setChildren(children);
+	  DOMResult document = new DOMResult();
+	  marshaller.marshal(didl, document);
+
+	  return new BrowseResult(nodeToString(document.getNode(), false), numberReturned, totalMatches, getSystemUpdateID().getValue());
+   }
+
    protected BrowseResult createBrowseResult(DIDLObject object, BrowseFlag browseFlag, String filter, int firstResult, int maxResults)
    throws Exception
    {
@@ -296,7 +322,7 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 	  DOMResult document = new DOMResult();
 	  marshaller.marshal(didl, document);
 
-	  return new BrowseResult(nodeToString(document.getNode(), false), numberReturned, totalMatches);
+	  return new BrowseResult(nodeToString(document.getNode(), false), numberReturned, totalMatches, getSystemUpdateID().getValue());
    }
 
    protected static String nodeToString(Node node, boolean omitProlog) throws Exception {
@@ -322,7 +348,27 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 	  return out.toString();
    }
 
-   public static String getUriForResource(String id) {
-	  return contextPath + "/rest/track/" + id + "/content";
+   public static URI getUriForResource(Res res) throws URISyntaxException {
+	  if (res instanceof FileRes)
+		 return new URI(contextPath + "/rest/track/" + res.getId() + "/content");
+	  else if (res instanceof BlobRes)
+		 return new URI(contextPath + "/rest/blob/" + res.getId() + "/content");
+	  else
+		 return null;
+   }
+
+   // dlna-playcontainer://uuid%3Aa014f495-391b-4f60-8f48-e1c339739476?sid=urn%3Aupnp-org%3AserviceId%3AContentDirectory&cid=Root%2FMy%20Music%2FArtists%2FArtist%2FAllTracks%3AalbumArtistID%3D1818&fid=0&fii=0&sc=%2Bupnp%3Aalbum%2C%2Bupnp%3AoriginalTrackNumber%2C%2Bdc%3Atitle
+   // dlna-playcontainer://uuid:fe814e3e-1234-4321-1431-383fb599cc01?sid=urn:upnp-org:serviceId:ContentDirectory&cid=1441&fid=1444&fii=0&sc=&md=0
+   public static URI getContainerURI(String id) throws URISyntaxException {
+	  UDN udn = theContentDirectory.device.getIdentity().getUdn();
+	  String query = String.format("sid=%s&cid=%s", "urn:upnp-org:serviceId:ContentDirectory", id);
+	  URI uri = new URI("dlna-playcontainer", udn.getIdentifierString(), null, query, null);
+	  return uri;
+   }
+
+   public static void changeSystemUpdateId() {
+	  if (theContentDirectory != null) {
+		 theContentDirectory.changeSystemUpdateID();
+	  }
    }
 }

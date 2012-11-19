@@ -18,6 +18,8 @@ import javax.persistence.Id;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
+import de.cgawron.mp3.crawler.Crawler;
+
 @XmlRootElement
 public class Album
 {

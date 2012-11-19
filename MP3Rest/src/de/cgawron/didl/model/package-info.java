@@ -20,7 +20,7 @@ elementFormDefault = XmlNsForm.QUALIFIED
  @javax.xml.bind.annotation.XmlNs(prefix = "upnp",
  namespaceURI = "urn:schemas-upnp-org:metadata-1-0/upnp/")
  }*/)
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
 
 import javax.xml.bind.annotation.XmlNsForm;
 

@@ -1,4 +1,4 @@
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -10,25 +10,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.persistence.CascadeType;
 import javax.persistence.Entity;
-import javax.persistence.ManyToMany;
-
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.tag.FieldKey;
-import org.jaudiotagger.tag.Tag;
-import org.jaudiotagger.tag.TagField;
-import org.jaudiotagger.tag.TagTextField;
-
-import de.cgawron.mp3.server.upnp.model.ArtistWithRole.Role;
+import javax.persistence.Transient;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 
 /*
  *   artist upnp No
@@ -40,6 +28,7 @@ import de.cgawron.mp3.server.upnp.model.ArtistWithRole.Role;
  date dc No
  */
 
+@XmlRootElement(name = "item")
 @Entity
 public class MusicTrack extends AudioItem
 {
@@ -48,8 +37,6 @@ public class MusicTrack extends AudioItem
    private String album;
 
    private int originalTrackNumber;
-
-   private Set<ArtistWithRole> artists;
 
    public MusicTrack()
    {
@@ -62,60 +49,6 @@ public class MusicTrack extends AudioItem
 	  super(uuidForPath(path).toString(), container);
 	  setClazz(DIDLObject.MUSICTRACK);
 	  logger.info("calling setMetadata");
-	  setMetadata(path);
-	  Res res = new Res(path, getId(), mimeType);
-	  addResource(res);
-	  if (container != null) {
-		 container.addItem(this);
-	  }
-   }
-
-   private void setMetadata(Path path) {
-	  try {
-		 AudioFile f = AudioFileIO.read(path.toFile());
-		 Tag tag = f.getTag();
-		 setAlbum(tag.getFirst(FieldKey.ALBUM));
-		 setOriginalTrackNumber(Integer.parseInt(tag.getFirst(FieldKey.TRACK)));
-		 setTitle(tag.getFirst(FieldKey.TITLE));
-		 for (TagField field : tag.getFields(FieldKey.ARTIST)) {
-			if (field instanceof TagTextField) {
-			   TagTextField text = (TagTextField) field;
-			   logger.info("adding artist " + text.getContent());
-			   addArtist(text.getContent(), ArtistWithRole.Role.Unspecified);
-			}
-		 }
-		 for (TagField field : tag.getFields(FieldKey.COMPOSER)) {
-			if (field instanceof TagTextField) {
-			   TagTextField text = (TagTextField) field;
-			   logger.info("adding composer " + text.getContent());
-			   addArtist(text.getContent(), ArtistWithRole.Role.Composer);
-			}
-		 }
-		 for (TagField field : tag.getFields(FieldKey.CONDUCTOR)) {
-			if (field instanceof TagTextField) {
-			   TagTextField text = (TagTextField) field;
-			   logger.info("adding conductor " + text.getContent());
-			   addArtist(text.getContent(), ArtistWithRole.Role.Conductor);
-			}
-		 }
-
-		 Iterator<TagField> tags = tag.getFields();
-		 while (tags.hasNext()) {
-			TagField field = tags.next();
-			logger.info("tag field: " + field.getId() + ": " + field.toString());
-		 }
-
-	  } catch (Exception ex) {
-		 logger.log(Level.SEVERE, "error setting metadata for " + path, ex);
-	  }
-
-   }
-
-   private void addArtist(String artist, Role role) {
-	  if (artists == null) {
-		 artists = new HashSet<ArtistWithRole>();
-	  }
-	  artists.add(new ArtistWithRole(artist, role));
    }
 
    public String getAlbum() {
@@ -126,21 +59,20 @@ public class MusicTrack extends AudioItem
 	  this.album = album;
    }
 
-   @ManyToMany(cascade = CascadeType.ALL)
-   public Set<ArtistWithRole> getArtists() {
-	  return artists;
-   }
-
-   public void setArtists(Set<ArtistWithRole> artists) {
-	  this.artists = artists;
-   }
-
    public int getOriginalTrackNumber() {
 	  return originalTrackNumber;
    }
 
    public void setOriginalTrackNumber(int originalTrackNumber) {
 	  this.originalTrackNumber = originalTrackNumber;
+   }
+
+   @XmlTransient
+   @Transient
+   @Override
+   public int getIndex()
+   {
+	  return originalTrackNumber;
    }
 
    public static UUID uuidForPath(Path path) throws IOException
@@ -178,5 +110,11 @@ public class MusicTrack extends AudioItem
 	  lsb |= (hash[14] & 0xFFL) << 8;
 	  lsb |= (hash[15] & 0xFFL);
 	  return new UUID(msb, lsb);
+   }
+
+   @Override
+   public String toString() {
+	  return "MusicTrack [album=" + album + ", originalTrackNumber=" + originalTrackNumber + ", artists=" + artists + ", toString()=" +
+		     super.toString() + "]";
    }
 }

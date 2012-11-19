@@ -1,7 +1,10 @@
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
 
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.persistence.CascadeType;
@@ -19,12 +22,17 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlTransient;
 
-//@XmlRootElement(namespace = "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/")
+import de.cgawron.didl.model.ArtistWithRole.Role;
+
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "class")
-public abstract class DIDLObject
+public abstract class DIDLObject implements Cloneable
 {
+   public static final String NS_UPNP = "urn:schemas-upnp-org:metadata-1-0/upnp/";
+   public static final String NS_DIDL = "urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/";
+   public static final String NS_DC = "http://purl.org/dc/elements/1.1/";
+
    private static final String OBJECT = "object";
 
    public static final String ITEM = "object.item";
@@ -42,14 +50,8 @@ public abstract class DIDLObject
    private String clazz;
    private boolean restricted;
    private List<Res> resources;
-
-   /**
-    * Convert into Cling support model.
-    * 
-    * @return org.teleal.cling.support.model.DIDLObject corresponding to this
-    *         object.
-    */
-   public abstract org.teleal.cling.support.model.DIDLObject toClingModel();
+   private String albumArtURI;
+   protected Set<ArtistWithRole> artists;
 
    protected DIDLObject()
    {
@@ -92,7 +94,7 @@ public abstract class DIDLObject
 		 return parent.getId();
    }
 
-   @XmlElement(required = true, defaultValue = "", namespace = "http://purl.org/dc/elements/1.1/")
+   @XmlElement(required = true, defaultValue = "", namespace = NS_DC)
    public String getTitle() {
 	  return title;
    }
@@ -101,7 +103,7 @@ public abstract class DIDLObject
 	  this.title = title;
    }
 
-   @XmlElement(namespace = "http://purl.org/dc/elements/1.1/")
+   @XmlElement(namespace = NS_DC)
    public String getCreator() {
 	  return creator;
    }
@@ -111,7 +113,7 @@ public abstract class DIDLObject
    }
 
    @Column(name = "class")
-   @XmlElement(name = "class", required = true, namespace = "urn:schemas-upnp-org:metadata-1-0/upnp/")
+   @XmlElement(name = "class", required = true, namespace = NS_UPNP)
    public String getClazz() {
 	  return clazz;
    }
@@ -163,8 +165,59 @@ public abstract class DIDLObject
 
    @Override
    public String toString() {
-	  return String.format("DIDLObject [id=%s, parent=%s, title=%s, creator=%s, clazz=%s, resources=%s]",
-		                   id, parent.getId(), title, creator, clazz, resources);
+	  return String.format("DIDLObject [class=%s id=%s, parent=%s, title=%s, creator=%s, clazz=%s, resources=%s]",
+		                   getClass().getName(), id, parent.getId(), title, creator, clazz, resources);
    }
 
+   /**
+    * Dummy index. Should be overloaded by child classes that want to persist
+    * the order of items in a container
+    */
+   @XmlTransient
+   public int getIndex() {
+	  return 0;
+   }
+
+   public void setIndex(int index) {
+   }
+
+   @Override
+   public DIDLObject clone() throws CloneNotSupportedException {
+	  DIDLObject clone = (DIDLObject) (super.clone());
+	  clone.resources = new ArrayList<Res>(resources);
+	  return clone;
+   }
+
+   @XmlElement(namespace = DIDLObject.NS_UPNP)
+   public String getAlbumArtURI() {
+	  return albumArtURI;
+   }
+
+   public void setAlbumArtURI(String albumArtURI) {
+	  this.albumArtURI = albumArtURI;
+   }
+
+   public void setAlbumArtURI(URI albumArtURI) {
+	  if (albumArtURI != null)
+		 this.albumArtURI = albumArtURI.toASCIIString();
+	  else
+		 this.albumArtURI = null;
+   }
+
+   public void addArtist(String artist, Role role) {
+	  if (artists == null) {
+		 artists = new HashSet<ArtistWithRole>();
+	  }
+	  artists.add(new ArtistWithRole(artist, role));
+   }
+
+   @XmlElement(name = "artist", namespace = DIDLObject.NS_UPNP)
+   @ManyToMany(cascade = CascadeType.ALL)
+   public Set<ArtistWithRole> getArtists() {
+	  return artists;
+   }
+
+   public void setArtists(Set<ArtistWithRole> artists) {
+	  this.artists = artists;
+   }
 }

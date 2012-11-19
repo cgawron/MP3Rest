@@ -1,11 +1,14 @@
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
 
 import java.util.List;
+import java.util.UUID;
 
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
+import javax.xml.bind.annotation.XmlRootElement;
 
+@XmlRootElement(name = "item")
 @Entity
 @DiscriminatorValue(DIDLObject.AUDIOITEM)
 public class AudioItem extends Item
@@ -27,6 +30,11 @@ public class AudioItem extends Item
    {
 	  super(id, parent);
 	  setClazz(AUDIOITEM);
+   }
+
+   public AudioItem(UUID id, Container parent)
+   {
+	  this(id.toString(), parent);
    }
 
    @ElementCollection

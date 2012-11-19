@@ -1,4 +1,4 @@
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
 
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;

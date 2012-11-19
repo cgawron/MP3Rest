@@ -36,6 +36,8 @@ import org.jaudiotagger.tag.TagException;
 import org.jaudiotagger.tag.TagField;
 import org.jaudiotagger.tag.TagTextField;
 
+import de.cgawron.mp3.crawler.Crawler;
+
 public class Track
 {
    private static Logger logger = Logger.getLogger(Track.class.toString());

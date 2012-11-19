@@ -1,8 +1,8 @@
-package de.cgawron.mp3.server.upnp.model;
+package de.cgawron.didl.model;
 
 import java.io.Serializable;
 
-import de.cgawron.mp3.server.upnp.model.ArtistWithRole.Role;
+import de.cgawron.didl.model.ArtistWithRole.Role;
 
 public class ArtistWithRolePK implements Serializable
 {

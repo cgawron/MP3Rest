@@ -11,6 +11,8 @@ import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import de.cgawron.mp3.crawler.Crawler;
+
 public class Updater extends TimerTask implements Runnable
 {
    private static Logger logger = Logger.getLogger(Updater.class.toString());
