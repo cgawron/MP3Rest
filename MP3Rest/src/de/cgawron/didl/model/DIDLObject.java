@@ -238,6 +238,7 @@ public abstract class DIDLObject implements Cloneable
    @XmlElement(name = "genre", namespace = DIDLObject.NS_UPNP)
    @ElementCollection
    @Column(name = "genre")
+   @JoinTable(name = "didlobject_genre")
    public Set<String> getGenres() {
 	  return genre;
    }

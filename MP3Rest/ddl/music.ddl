@@ -1,7 +1,5 @@
 --<ScriptOptions statementTerminator=";"/>
 
---<ScriptOptions statementTerminator=";"/>
-
 DROP INDEX didlobject_pkey;
 
 DROP INDEX musictrack_pkey;
@@ -40,19 +38,13 @@ DROP TABLE container_didlobject;
 
 DROP TABLE container;
 
-DROP TABLE audioitem_genre;
-
 DROP TABLE res;
-
-DROP TABLE didlobject_genres;
 
 DROP TABLE audioitem_publisher;
 
 DROP TABLE fileres;
 
 DROP TABLE audioitem;
-
-DROP TABLE participant;
 
 DROP TABLE externalres;
 
@@ -61,8 +53,6 @@ DROP TABLE musictrack;
 DROP TABLE album;
 
 DROP TABLE item;
-
-DROP TABLE didlobject_artistwithrole;
 
 DROP TABLE didlobject_artist;
 
@@ -108,22 +98,12 @@ CREATE TABLE container (
 		id VARCHAR(255) NOT NULL
 	);
 
-CREATE TABLE audioitem_genre (
-		audioitem_id VARCHAR(255) NOT NULL,
-		genre VARCHAR(255)
-	);
-
 CREATE TABLE res (
 		id VARCHAR(255) NOT NULL,
 		duration VARCHAR(255),
 		protocolinfo VARCHAR(255),
 		size INT8 NOT NULL,
 		type VARCHAR(255)
-	);
-
-CREATE TABLE didlobject_genres (
-		didlobject_id VARCHAR(255) NOT NULL,
-		genre VARCHAR(255)
 	);
 
 CREATE TABLE audioitem_publisher (
@@ -143,25 +123,6 @@ CREATE TABLE audioitem (
 		relation VARCHAR(255),
 		rights VARCHAR(255),
 		id VARCHAR(255) NOT NULL
-	);
-
-CREATE TABLE participant (
-		id VARCHAR(50) NOT NULL,
-		firstname VARCHAR(50),
-		surname VARCHAR(50),
-		country VARCHAR(50),
-		club VARCHAR(50),
-		strength VARCHAR(10),
-		rating VARCHAR(10),
-		birthday VARCHAR(10),
-		sex VARCHAR(10),
-		firstweek VARCHAR(10),
-		weekend VARCHAR(10),
-		secondweek VARCHAR(10),
-		cash VARCHAR(10),
-		changed VARCHAR(10),
-		export VARCHAR(10),
-		info VARCHAR(250)
 	);
 
 CREATE TABLE externalres (
@@ -192,8 +153,6 @@ CREATE TABLE item (
 		id VARCHAR(255) NOT NULL
 	);
 
-CREATE TABLE didlobject_artistwithrole (
-	);
 
 CREATE TABLE didlobject_artist (
 		object_id VARCHAR(255) NOT NULL,
@@ -245,38 +204,6 @@ CREATE TABLE audiobroadcast (
 		id VARCHAR(255) NOT NULL
 	);
 
-CREATE UNIQUE INDEX didlobject_pkey ON didlobject (id ASC);
-
-CREATE UNIQUE INDEX musictrack_pkey ON musictrack (id ASC);
-
-CREATE UNIQUE INDEX container_didlobject_children_id_key ON container_didlobject (children_id ASC);
-
-CREATE UNIQUE INDEX fileres_pkey ON fileres (id ASC);
-
-CREATE UNIQUE INDEX musicalbum_pkey ON musicalbum (id ASC);
-
-CREATE UNIQUE INDEX res_pkey ON res (id ASC);
-
-CREATE UNIQUE INDEX musicgenre_pkey ON musicgenre (id ASC);
-
-CREATE UNIQUE INDEX crawler_pkey ON crawler (path ASC);
-
-CREATE UNIQUE INDEX blobres_pkey ON blobres (id ASC);
-
-CREATE UNIQUE INDEX externalres_pkey ON externalres (id ASC);
-
-CREATE UNIQUE INDEX audioitem_pkey ON audioitem (id ASC);
-
-CREATE UNIQUE INDEX item_pkey ON item (id ASC);
-
-CREATE UNIQUE INDEX container_pkey ON container (id ASC);
-
-CREATE UNIQUE INDEX audiobroadcast_pkey ON audiobroadcast (id ASC);
-
-CREATE UNIQUE INDEX artistwithrole_pkey ON artistwithrole (artist ASC, role ASC);
-
-ALTER TABLE didlobject_artistwithrole ADD CONSTRAINT didlobject_artistwithrole_pkey PRIMARY KEY (didlobject_id, artists_artist, artists_role);
-
 ALTER TABLE audioitem ADD CONSTRAINT audioitem_pkey PRIMARY KEY (id);
 
 ALTER TABLE musicalbum ADD CONSTRAINT musicalbum_pkey PRIMARY KEY (id);
@@ -288,8 +215,6 @@ ALTER TABLE musicgenre ADD CONSTRAINT musicgenre_pkey PRIMARY KEY (id);
 ALTER TABLE audiobroadcast ADD CONSTRAINT audiobroadcast_pkey PRIMARY KEY (id);
 
 ALTER TABLE item ADD CONSTRAINT item_pkey PRIMARY KEY (id);
-
-ALTER TABLE track_artists ADD CONSTRAINT track_artists_pkey PRIMARY KEY (musictrack_id, artists_role, artists_artist_name);
 
 ALTER TABLE container ADD CONSTRAINT container_pkey PRIMARY KEY (id);
 
@@ -315,16 +240,10 @@ ALTER TABLE didlobject ADD CONSTRAINT fk_didlobject_container FOREIGN KEY (paren
 ALTER TABLE container ADD CONSTRAINT fk_container_didlobject FOREIGN KEY (id)
 	REFERENCES didlobject (id);
 
-ALTER TABLE didlobject_genres ADD CONSTRAINT fk_didlobject_genres FOREIGN KEY (didlobject_id)
-	REFERENCES didlobject (id);
-
-ALTER TABLE didlobject_artistwithrole ADD CONSTRAINT fk_artist FOREIGN KEY (artists_artist, artists_role)
-	REFERENCES artistwithrole (artist, role);
-
 ALTER TABLE fileres ADD CONSTRAINT fk_fileres FOREIGN KEY (id)
 	REFERENCES res (id);
 
-ALTER TABLE didlobject_artistwithrole ADD CONSTRAINT fk_artist_didlobject FOREIGN KEY (didlobject_id)
+ALTER TABLE didlobject_artist ADD CONSTRAINT fk_artist_didlobject FOREIGN KEY (object_id)
 	REFERENCES didlobject (id);
 
 ALTER TABLE blobres ADD CONSTRAINT fk_blobres FOREIGN KEY (id)
