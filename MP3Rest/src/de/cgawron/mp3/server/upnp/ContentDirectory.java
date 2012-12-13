@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.mp3.server.upnp;
 
 import java.io.IOException;
@@ -17,6 +24,8 @@ import javax.persistence.EntityManagerFactory;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.stream.XMLEventWriter;
+import javax.xml.stream.XMLOutputFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
@@ -130,67 +139,6 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 			                                 ex.toString());
 	  }
    }
-
-   /*
-    * Container allAlbumContainer = null;
-    * 
-    * private Container getAllAlbumContainer() throws MalformedURLException,
-    * Exception { logger.info("getAllAlbumContainer"); if (allAlbumContainer ==
-    * null) { allAlbumContainer = new Container(ID_ALBUMS, ID_ROOT, "Albums",
-    * null, 0); List<Album> albums = Album.getAll(null, null); for (Album album
-    * : albums) { allAlbumContainer.addContainer(getAlbumContainer(album)); } //
-    * allAlbumContainer.setSearchable(true);
-    * allAlbumContainer.setChildCount(allAlbumContainer.getContainers().size() +
-    * allAlbumContainer.getItems().size()); }
-    * logger.info("getAllAlbumContainer: childCount=" +
-    * allAlbumContainer.getChildCount()); return allAlbumContainer; }
-    * 
-    * private Container getAlbumContainer(Album album) throws
-    * MalformedURLException, SQLException { logger.info("getAlbumContainer(" +
-    * album + ")"); String albumId = "album/" + album.getAlbumId().toString();
-    * Container didl = new de.cgawron.mp3.server.upnp.model.Album(albumId,
-    * ID_ALBUMS, album.getTitle(), "", album.getTrackIDs().size()); MimeType
-    * mimeType = new MimeType("audio", "m3u"); Res res = new Res(mimeType, 0L,
-    * contextPath + "/rest/" + albumId + "/playList"); didl.addResource(res);
-    * for (int i = 0; i < album.getTrackIDs().size(); i++) {
-    * didl.addItem(getAlbumTrackContainer(album, i)); } return didl; }
-    * 
-    * private Item getAlbumTrackContainer(Album album, int trackNo) throws
-    * MalformedURLException, SQLException { String albumId = "album/" +
-    * album.getAlbumId().toString(); UUID uuid =
-    * album.getTrackIDs().get(trackNo); Track track = Track.getById(uuid);
-    * MimeType mimeType = new MimeType("audio", "mpeg"); Res res = new
-    * Res(track.getFile().length(), contextPath + "/rest/track/" + uuid +
-    * "/content", "http-get:*:audio/mpeg:*"); MusicTrack item = new
-    * MusicTrack(albumId + "/" + trackNo, albumId, track.getTitle(), "",
-    * album.getTitle(), "", res); return item; }
-    * 
-    * private de.cgawron.mp3.server.upnp.model.Item getDLFItem() throws
-    * URISyntaxException { URI dlfURI = new URI(
-    * "http://dradio_mp3_dlf_m.akacast.akamaistream.net/7/249/142684/v1/gnl.akacast.akamaistream.net/dradio_mp3_dlf_m"
-    * ); de.cgawron.mp3.server.upnp.model.Res dlfRes = new
-    * de.cgawron.mp3.server.upnp.model.Res(dlfURI, "http-get:*:audio/mpeg:*");
-    * 
-    * de.cgawron.mp3.server.upnp.model.Item item = new
-    * de.cgawron.mp3.server.upnp.model.AudioBroadcast(ID_DLF, ID_RADIO, "DLF",
-    * dlfRes); // item.addProperty(new
-    * DIDLObject.Property.UPNP.ALBUM_ART_URI(new //
-    * URI("http://dlf.de/papaya-themes/dradio/img/dlf50/dradio-icon.png")));
-    * 
-    * logger.info("persisting " + item); try { EntityTransaction ta =
-    * entityManager.getTransaction(); ta.begin(); entityManager.persist(item);
-    * entityManager.flush(); ta.commit(); logger.info("persisting " + item +
-    * ": done"); } catch (Exception ex) { logger.log(Level.SEVERE,
-    * "faild to persist " + item, ex); } return item; }
-    * 
-    * private Container getRootContainer() throws MalformedURLException,
-    * Exception { Container didl = new Container(ID_ROOT, ID_ROOT, "Root", null,
-    * new DIDLObject.Class("object.container"), 2); didl.addContainer(new
-    * PlaylistContainer(ID_ALBUMS, ID_ROOT, "Albums", null,
-    * getAllAlbumContainer().getChildCount())); didl.addContainer(new
-    * PlaylistContainer(ID_RADIO, ID_ROOT, "Radio", null, 1)); //
-    * didl.setSearchable(true); return didl; }
-    */
 
    @Override
    public BrowseResult search(String containerId, String
@@ -319,13 +267,18 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 		 didl = new DIDLLite(object);
 	  }
 
-	  DOMResult document = new DOMResult();
-	  marshaller.marshal(didl, document);
+	  // TODO: Improve performance (avoid DOM?)
+	  logger.info("marshalling ...");
+	  StringWriter stringWriter = new StringWriter();
+	  XMLEventWriter writer = XMLOutputFactory.newInstance().createXMLEventWriter(stringWriter);
+	  marshaller.marshal(didl, writer);
+	  logger.info("... done");
 
-	  return new BrowseResult(nodeToString(document.getNode(), false), numberReturned, totalMatches, getSystemUpdateID().getValue());
+	  return new BrowseResult(stringWriter.toString(), numberReturned, totalMatches, getSystemUpdateID().getValue());
    }
 
    protected static String nodeToString(Node node, boolean omitProlog) throws Exception {
+	  logger.info("nodeToString starting ...");
 	  TransformerFactory transFactory = TransformerFactory.newInstance();
 
 	  transFactory.setAttribute("indent-number", 4);
@@ -345,14 +298,15 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
 
 	  StringWriter out = new StringWriter();
 	  transformer.transform(new DOMSource(node), new StreamResult(out));
+	  logger.info("... done");
 	  return out.toString();
    }
 
    public static URI getUriForResource(Res res) throws URISyntaxException {
 	  if (res instanceof FileRes)
-		 return new URI(contextPath + "/rest/track/" + res.getId() + "/content");
+		 return URI.create(contextPath + "/rest/track/" + res.getId() + "/content");
 	  else if (res instanceof BlobRes)
-		 return new URI(contextPath + "/rest/blob/" + res.getId() + "/content");
+		 return URI.create(contextPath + "/rest/blob/" + res.getId() + "/content");
 	  else
 		 return null;
    }
@@ -362,7 +316,7 @@ public class ContentDirectory extends AbstractContentDirectoryService implements
    public static URI getContainerURI(String id) throws URISyntaxException {
 	  UDN udn = theContentDirectory.device.getIdentity().getUdn();
 	  String query = String.format("sid=%s&cid=%s", "urn:upnp-org:serviceId:ContentDirectory", id);
-	  URI uri = new URI("dlna-playcontainer", udn.getIdentifierString(), null, query, null);
+	  URI uri = new URI("dlna-playcontainer", "uuid:" + udn.getIdentifierString(), null, query, null);
 	  return uri;
    }
 

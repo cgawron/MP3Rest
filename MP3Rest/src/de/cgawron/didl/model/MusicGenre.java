@@ -7,6 +7,7 @@
  *******************************************************************************/
 package de.cgawron.didl.model;
 
+import java.util.UUID;
 
 import javax.persistence.Entity;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -20,17 +21,23 @@ import javax.xml.bind.annotation.XmlRootElement;
  */
 @XmlRootElement(name = "container")
 @Entity
-public class MusicAlbum extends Album
+public class MusicGenre extends Container
 {
-   public MusicAlbum()
+   public MusicGenre()
    {
-	  setClazz(DIDLObject.MUSICALBUM);
+	  setClazz(DIDLObject.MUSICGENRE);
    }
 
-   public MusicAlbum(String id, Container parent, String title, String creator)
+   public MusicGenre(String id, Container parent, String title, String creator)
    {
 	  super(id, parent, title, creator);
-	  setClazz(DIDLObject.MUSICALBUM);
+	  setClazz(DIDLObject.MUSICGENRE);
+   }
+
+   public MusicGenre(String title)
+   {
+	  super(UUID.nameUUIDFromBytes(title.getBytes()).toString(), null, title, null);
+	  setClazz(DIDLObject.MUSICGENRE);
    }
 
    @Override

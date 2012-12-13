@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.didl.model;
 
 import java.net.URI;
@@ -10,11 +17,13 @@ import java.util.UUID;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.DiscriminatorColumn;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Transient;
@@ -42,6 +51,7 @@ public abstract class DIDLObject implements Cloneable
    public static final String CONTAINER = "object.container";
    public static final String ALBUM = "object.container.album";
    public static final String MUSICALBUM = "object.container.album.musicAlbum";
+   public static final String MUSICGENRE = "object.container.genre.musicGenre";
 
    private String id;
    private Container parent;
@@ -51,7 +61,8 @@ public abstract class DIDLObject implements Cloneable
    private boolean restricted;
    private List<Res> resources;
    private String albumArtURI;
-   protected Set<ArtistWithRole> artists;
+   protected Set<ArtistWithRole> artists = new HashSet<ArtistWithRole>();
+   protected Set<String> genre = new HashSet<String>();
 
    protected DIDLObject()
    {
@@ -142,7 +153,7 @@ public abstract class DIDLObject implements Cloneable
    }
 
    public void setId(UUID id) {
-	  this.id = id.toString();
+	  setId(id.toString());
    }
 
    @XmlElement(name = "res")
@@ -185,6 +196,8 @@ public abstract class DIDLObject implements Cloneable
    public DIDLObject clone() throws CloneNotSupportedException {
 	  DIDLObject clone = (DIDLObject) (super.clone());
 	  clone.resources = new ArrayList<Res>(resources);
+	  clone.artists = new HashSet<ArtistWithRole>(artists);
+	  clone.genre = new HashSet<String>(genre);
 	  return clone;
    }
 
@@ -213,11 +226,29 @@ public abstract class DIDLObject implements Cloneable
 
    @XmlElement(name = "artist", namespace = DIDLObject.NS_UPNP)
    @ManyToMany(cascade = CascadeType.ALL)
+   @JoinTable(name = "didlobject_artist", joinColumns = @JoinColumn(name = "object_id"))
    public Set<ArtistWithRole> getArtists() {
 	  return artists;
    }
 
    public void setArtists(Set<ArtistWithRole> artists) {
 	  this.artists = artists;
+   }
+
+   @XmlElement(name = "genre", namespace = DIDLObject.NS_UPNP)
+   @ElementCollection
+   @Column(name = "genre")
+   public Set<String> getGenres() {
+	  return genre;
+   }
+
+   public void setGenres(Set<String> genre) {
+	  this.genre = genre;
+   }
+
+   public void addGenre(String genre) {
+	  if (this.genre == null)
+		 this.genre = new HashSet<String>();
+	  this.genre.add(genre);
    }
 }

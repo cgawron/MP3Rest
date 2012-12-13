@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.didl.model;
 
 import java.util.ArrayList;
@@ -89,7 +96,8 @@ public class Container extends DIDLObject
 	  this.searchable = searchable;
    }
 
-   public void addItem(Item item) {
+   public void addChild(DIDLObject item) {
+	  item.setParent(this);
 	  if (children == null) {
 		 children = new ArrayList<DIDLObject>();
 	  }
@@ -105,6 +113,16 @@ public class Container extends DIDLObject
 
    public void setChildren(List<DIDLObject> children) {
 	  this.children = children;
+   }
+
+   @Override
+   public void setId(String id) {
+	  super.setId(id);
+	  if (children != null) {
+		 for (DIDLObject child : children) {
+			child.setParent(this);
+		 }
+	  }
    }
 
    @Override
@@ -136,7 +154,16 @@ public class Container extends DIDLObject
    }
 
    @Override
-   public DIDLObject clone() throws CloneNotSupportedException {
-	  throw new CloneNotSupportedException("Only items may be cloned: " + getClazz());
+   public Container clone() throws CloneNotSupportedException {
+	  Container clone = (Container) (super.clone());
+	  // ToDo Can we avoid using a random uuid?
+	  clone.setId(UUID.randomUUID());
+	  if (children != null) {
+		 clone.children = new ArrayList<DIDLObject>();
+		 for (DIDLObject child : children) {
+			clone.addChild(child.clone());
+		 }
+	  }
+	  return clone;
    }
 }

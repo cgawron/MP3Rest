@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.didl.model;
 
 import java.util.List;
@@ -13,7 +20,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 @DiscriminatorValue(DIDLObject.AUDIOITEM)
 public class AudioItem extends Item
 {
-   List<String> genre;
    String description;
    String longDescription;
    List<String> publisher;
@@ -35,15 +41,6 @@ public class AudioItem extends Item
    public AudioItem(UUID id, Container parent)
    {
 	  this(id.toString(), parent);
-   }
-
-   @ElementCollection
-   public List<String> getGenre() {
-	  return genre;
-   }
-
-   public void setGenre(List<String> genre) {
-	  this.genre = genre;
    }
 
    public String getDescription() {

@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.didl.model;
 
 import java.util.Set;
@@ -37,8 +44,8 @@ public class ArtistWithRole
    @Enumerated
    Role role;
 
-   @ManyToMany(cascade = CascadeType.ALL)
-   Set<Item> items;
+   @ManyToMany(cascade = CascadeType.ALL, mappedBy = "artists")
+   Set<DIDLObject> objects;
 
    public ArtistWithRole()
    {
@@ -69,12 +76,12 @@ public class ArtistWithRole
    }
 
    @XmlTransient
-   public Set<Item> getItems() {
-	  return items;
+   public Set<DIDLObject> getObjects() {
+	  return objects;
    }
 
-   public void setItems(Set<Item> items) {
-	  this.items = items;
+   public void setObjects(Set<DIDLObject> items) {
+	  this.objects = items;
    }
 
    @Override

@@ -1,11 +1,21 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.mp3.rest;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.MalformedURLException;
+import java.net.SocketException;
 import java.net.URI;
 import java.sql.SQLException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.naming.InitialContext;
@@ -17,9 +27,11 @@ import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
 import de.cgawron.didl.model.BlobRes;
@@ -38,6 +50,7 @@ public class StreamResource
    public Response getFile(@PathParam("id") String id, @HeaderParam("Range") String range) throws SQLException, NamingException,
    MalformedURLException, IOException {
 	  ResponseBuilder response;
+
 	  InitialContext ic = new InitialContext();
 	  EntityManagerFactory entityManagerFactory = (EntityManagerFactory) ic.lookup("java:/MP3Rest");
 	  EntityManager em = entityManagerFactory.createEntityManager();
@@ -55,14 +68,40 @@ public class StreamResource
 	  }
 	  else {
 		 URI uri = res.getInternalUri();
-		 InputStream stream = uri.toURL().openConnection().getInputStream();
+		 final InputStream stream = uri.toURL().openConnection().getInputStream();
+		 StreamingOutput output = new StreamingOutput()
+		 {
+
+			@Override
+			public void write(OutputStream output) throws IOException, WebApplicationException {
+			   try {
+				  byte[] buf = new byte[8192];
+				  int count;
+				  while ((count = stream.read(buf)) > 0) {
+					 output.write(buf, 0, count);
+				  }
+			   }
+			   catch (Throwable ex) {
+				  Throwable cause = ex;
+				  while (cause.getCause() != null)
+					 cause = cause.getCause();
+				  if (cause instanceof SocketException) {
+					 logger.log(Level.INFO, "client aborted transfer", ex);
+				  }
+				  else {
+					 throw new WebApplicationException(ex);
+				  }
+			   }
+			}
+		 };
+
 		 if (range != null && range.length() > 0) {
 			int offset = range.indexOf('-');
 			int skip = Integer.parseInt(range.substring("bytes=".length(), offset));
 			stream.skip(skip);
 		 }
-		 response = Response.ok(stream);
-		 response.type("audio/mpeg");
+		 response = Response.ok(output);
+		 response.type(res.getProtocolInfo().getMimeType());
 		 response.header("Accept-Ranges", "bytes");
 	  }
 
@@ -96,7 +135,7 @@ public class StreamResource
 			stream.skip(skip);
 		 }
 		 response = Response.ok(stream);
-		 response.type(res.getMimeType());
+		 response.type(res.getProtocolInfo().getMimeType());
 		 response.header("Accept-Ranges", "bytes");
 	  }
 	  ta.commit();

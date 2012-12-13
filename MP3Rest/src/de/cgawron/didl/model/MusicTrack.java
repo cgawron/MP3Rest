@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.didl.model;
 
 import java.io.IOException;
@@ -15,6 +22,7 @@ import java.util.logging.Logger;
 
 import javax.persistence.Entity;
 import javax.persistence.Transient;
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
@@ -37,6 +45,7 @@ public class MusicTrack extends AudioItem
    private String album;
 
    private int originalTrackNumber;
+   private int originalDiscNumber;
 
    public MusicTrack()
    {
@@ -46,11 +55,12 @@ public class MusicTrack extends AudioItem
 
    public MusicTrack(Container container, Path path, String mimeType) throws IOException, URISyntaxException
    {
-	  super(uuidForPath(path).toString(), container);
+	  super(path.toString(), container);
 	  setClazz(DIDLObject.MUSICTRACK);
 	  logger.info("calling setMetadata");
    }
 
+   @XmlElement(namespace = NS_UPNP)
    public String getAlbum() {
 	  return album;
    }
@@ -59,6 +69,7 @@ public class MusicTrack extends AudioItem
 	  this.album = album;
    }
 
+   @XmlElement(namespace = NS_UPNP)
    public int getOriginalTrackNumber() {
 	  return originalTrackNumber;
    }
@@ -67,12 +78,23 @@ public class MusicTrack extends AudioItem
 	  this.originalTrackNumber = originalTrackNumber;
    }
 
+   public void setOriginalDiscNumber(int originalDiscNumber)
+   {
+	  this.originalDiscNumber = originalDiscNumber;
+   }
+
+   @XmlElement(namespace = NS_UPNP)
+   public int getOriginalDiscNumber()
+   {
+	  return originalDiscNumber;
+   }
+
    @XmlTransient
    @Transient
    @Override
    public int getIndex()
    {
-	  return originalTrackNumber;
+	  return 1000 * originalDiscNumber + originalTrackNumber;
    }
 
    public static UUID uuidForPath(Path path) throws IOException
@@ -117,4 +139,5 @@ public class MusicTrack extends AudioItem
 	  return "MusicTrack [album=" + album + ", originalTrackNumber=" + originalTrackNumber + ", artists=" + artists + ", toString()=" +
 		     super.toString() + "]";
    }
+
 }

@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.mp3.crawler;
 
 import static java.nio.file.FileVisitResult.CONTINUE;
@@ -33,6 +40,8 @@ import javax.ws.rs.core.MediaType;
 import de.cgawron.didl.model.Album;
 import de.cgawron.didl.model.Container;
 import de.cgawron.didl.model.DIDLObject;
+import de.cgawron.didl.model.Item;
+import de.cgawron.didl.model.MusicGenre;
 import de.cgawron.mp3.server.upnp.ContentDirectory;
 
 @Path("/crawler")
@@ -49,6 +58,7 @@ public class Crawler
 
    private static ServiceLoader<Indexer> indexerLoader = ServiceLoader.load(Indexer.class);
    private static Map<String, Indexer> indexerMap = new HashMap<String, Indexer>();
+   private EntityManager em;
 
    public Crawler()
    {
@@ -58,12 +68,13 @@ public class Crawler
 	  }
    }
 
-   static class UPNPFileVisitor extends SimpleFileVisitor<java.nio.file.Path>
+   class UPNPFileVisitor extends SimpleFileVisitor<java.nio.file.Path>
    {
-	  EntityManager em;
+
 	  EntityTransaction albumTransaction;
-	  Album album;
+	  Container album;
 	  Container rootContainer;
+	  int filesVisited;
 
 	  UPNPFileVisitor() throws NamingException
 	  {
@@ -98,23 +109,25 @@ public class Crawler
 	  }
 
 	  @Override
-	  public FileVisitResult postVisitDirectory(java.nio.file.Path path, IOException ex) throws IOException {
+	  public FileVisitResult postVisitDirectory(java.nio.file.Path path, IOException ex) {
 		 logger.info("dir " + path);
-
-		 if (albumTransaction != null) {
+		 albumTransaction = em.getTransaction();
+		 if (albumTransaction.isActive()) {
+			albumTransaction.rollback();
+		 }
+		 albumTransaction.begin();
+		 if (album != null) {
 			try {
-			   // album = em.merge(album);
-			   // albumTransaction.commit();
+			   album = em.merge(album);
+			   addFolders(album);
+			   albumTransaction.commit();
+			   ContentDirectory.changeSystemUpdateId();
 			} catch (Exception e) {
-			   logger.log(Level.SEVERE, "error visiting " + path, e);
-			   if (albumTransaction.isActive()) {
-				  // albumTransaction.rollback();
-			   }
-			} finally {
-			   albumTransaction = null;
+			   if (albumTransaction.isActive())
+				  albumTransaction.rollback();
+			   logger.log(Level.SEVERE, "exception while adding folders", e);
 			}
 		 }
-
 		 return CONTINUE;
 	  }
 
@@ -136,6 +149,13 @@ public class Crawler
 
 			   if (indexer != null) {
 				  object = indexer.indexFile(em, path, mimeType);
+				  if (object instanceof Item) {
+					 album = object.getParent();
+				  }
+				  else {
+					 album = (Container) object;
+				  }
+				  album = em.merge(album);
 				  if (object != null) {
 					 if (object.getParent() == null)
 						object.setParent(rootContainer);
@@ -153,6 +173,7 @@ public class Crawler
 			}
 			em.flush();
 			albumTransaction.commit();
+			filesVisited++;
 			ContentDirectory.changeSystemUpdateId();
 		 } catch (EntityExistsException ex) {
 			logger.log(Level.SEVERE, "entity already exists " + path, ex);
@@ -169,12 +190,41 @@ public class Crawler
 
 		 return CONTINUE;
 	  }
+
+	  public String getStatus() {
+		 return String.format("\n%d files visited\n", filesVisited);
+	  }
    }
 
    public static void registerIndexer(Indexer indexer) {
 	  for (String mimeType : indexer.mimeTypesSupported()) {
 		 indexerMap.put(mimeType, indexer);
 	  }
+   }
+
+   public void addFolders(DIDLObject object) throws CloneNotSupportedException {
+	  logger.info("addFolder " + object);
+	  if (object instanceof Item)
+		 object = object.getParent();
+
+	  if (object instanceof Album) {
+		 for (String genre : object.getGenres()) {
+			Container genreContainer = new MusicGenre(genre);
+			genreContainer = em.merge(genreContainer);
+			genreContainer.setParent(Container.getRootContainer(em));
+			String id = genreContainer.getId() + "/" + object.getId();
+			DIDLObject clone = em.find(Container.class, id);
+			if (clone == null) {
+			   clone = object.clone();
+			   clone.setId(id);
+			   clone.setParent(genreContainer);
+			   genreContainer.addChild(clone);
+			   em.persist(clone);
+			   logger.info("Creating additional folder " + clone);
+			}
+		 }
+	  }
+
    }
 
    @Deprecated
@@ -201,15 +251,15 @@ public class Crawler
    }
 
    @GET
-   @Produces({ MediaType.APPLICATION_XHTML_XML })
+   @Produces({ MediaType.TEXT_PLAIN })
    public String crawl(@QueryParam("root") String root) throws NamingException, IOException {
-	  FileVisitor<java.nio.file.Path> visitor = new UPNPFileVisitor();
+	  UPNPFileVisitor visitor = new UPNPFileVisitor();
 	  java.nio.file.Path rootPath = ROOT;
 	  if (root != null) {
 		 rootPath = FileSystems.getDefault().getPath(root);
 	  }
 	  Files.walkFileTree(rootPath, visitor);
-	  return "";
+	  return visitor.getStatus();
    }
 
    /**
@@ -223,7 +273,8 @@ public class Crawler
 	  // timer.schedule(updater, 5000, 5000);
 
 	  long millis = System.currentTimeMillis();
-	  FileVisitor visitor = new UPNPFileVisitor();
+	  Crawler crawler = new Crawler();
+	  FileVisitor visitor = crawler.new UPNPFileVisitor();
 	  Files.walkFileTree(ROOT, visitor);
 	  millis = System.currentTimeMillis() - millis;
 	  // logger.info(String.format("%d files visited in %d ms",

@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Christian Gawron.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package de.cgawron.didl.model;
 
 import java.net.URI;
@@ -28,6 +35,7 @@ public abstract class Res
    private ProtocolInfo protocolInfo;
    private String duration;
    private long size;
+   private String type;
 
    public static class ProtocolInfo
    {
@@ -100,6 +108,7 @@ public abstract class Res
 	  public void setAdditionalInfo(String additionalInfo) {
 		 this.additionalInfo = additionalInfo;
 	  }
+
    }
 
    public Res()
@@ -185,5 +194,14 @@ public abstract class Res
 
    public void setSize(long size) {
 	  this.size = size;
+   }
+
+   @XmlTransient
+   public String getType() {
+	  return type;
+   }
+
+   public void setType(String type) {
+	  this.type = type;
    }
 }
